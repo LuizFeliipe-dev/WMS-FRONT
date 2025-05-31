@@ -10,6 +10,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 interface ItemsPageContentProps {
   filteredItems: Item[];
   items: Item[];
+  isLoading?: boolean;
   searchTerm: string;
   setSearchTerm: (value: string) => void;
   filterGroup: string;
@@ -19,11 +20,13 @@ interface ItemsPageContentProps {
   handleAddItem: () => void;
   handleEditItem: (item: Item) => void;
   handleToggleItemStatus: (item: Item) => void;
+  handleDeleteItem: (item: Item) => void;
 }
 
 const ItemsPageContent = ({
   filteredItems,
   items,
+  isLoading = false,
   searchTerm,
   setSearchTerm,
   filterGroup,
@@ -32,7 +35,8 @@ const ItemsPageContent = ({
   setStatusFilter,
   handleAddItem,
   handleEditItem,
-  handleToggleItemStatus
+  handleToggleItemStatus,
+  handleDeleteItem
 }: ItemsPageContentProps) => {
   const isMobile = useIsMobile();
   
@@ -57,8 +61,10 @@ const ItemsPageContent = ({
         
         <ItemsTable 
           items={filteredItems}
+          isLoading={isLoading}
           onEdit={handleEditItem}
           onToggleStatus={handleToggleItemStatus}
+          onDelete={handleDeleteItem}
           filteredCount={filteredItems.length}
           totalCount={items.length}
         />

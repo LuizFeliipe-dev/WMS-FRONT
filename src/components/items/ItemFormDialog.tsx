@@ -15,7 +15,6 @@ interface ItemFormDialogProps {
   onOpenChange: (open: boolean) => void;
   editingItem: ItemFormValues | null;
   onSubmit: (data: ItemFormValues) => void;
-  suppliers: { id: string; name: string }[];
   groups: { id: string; name: string }[];
 }
 
@@ -24,7 +23,6 @@ const ItemFormDialog = ({
   onOpenChange,
   editingItem,
   onSubmit,
-  suppliers,
   groups
 }: ItemFormDialogProps) => {
   return (
@@ -42,7 +40,6 @@ const ItemFormDialog = ({
         <ItemForm
           initialData={editingItem}
           onSubmit={onSubmit}
-          suppliers={suppliers}
           groups={groups}
         />
       </DialogContent>

@@ -15,18 +15,23 @@ const TasksSection = () => {
     navigate('/tasks');
   };
 
+  const handleTaskClick = () => {
+    navigate('/tasks');
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border p-4 md:p-6">
       <h2 className="text-xl font-semibold mb-4">Tarefas Pendentes</h2>
       <div className="space-y-3">
         {pendingEntries.length > 0 ? (
-          pendingEntries.map(entry => (
+          pendingEntries.slice(0, 3).map(entry => (
             <TaskItem 
               key={entry.id}
               title={`Entrada de mercadorias - Pedido #${entry.orderNumber}`}
               dueDate={entry.date}
-              priority={entry.priority}
-              to={`/entry?order=${entry.orderNumber}`}
+              status={entry.status}
+              to={`/tasks`}
+              onClick={handleTaskClick}
             />
           ))
         ) : (

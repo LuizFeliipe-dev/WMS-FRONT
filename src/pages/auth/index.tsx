@@ -1,32 +1,34 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../lib/auth';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../lib/auth';
 import { motion } from 'framer-motion';
-import { Box, LogIn } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { Box } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 
-const Login = () => {
+const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
+  const location = useLocation();
   const { toast } = useToast();
   
+  // Get the return URL from location state or default to '/dashboard'
+  const from = location.state?.from?.pathname || '/dashboard';
+  
   useEffect(() => {
-    // Se já estiver autenticado, redirecionar para o dashboard
+    // If already authenticated, redirect to the from page
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, from]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,11 +37,12 @@ const Login = () => {
 
     try {
       await login(email, password);
-      // Mostrar mensagem de sucesso
+      console.log('Login successful, redirecting to:', from);
       toast({
         title: "Login realizado com sucesso",
         description: "Redirecionando para o dashboard...",
       });
+      // Redirecionamento acontecerá no useEffect quando isAuthenticated mudar
     } catch (err) {
       console.error('Login failed:', err);
       setError(err instanceof Error ? err.message : 'Email ou senha inválidos');
@@ -83,51 +86,56 @@ const Login = () => {
               </motion.div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                  placeholder="seu.email@exemplo.com"
-                  required
-                />
-              </div>
+            <form onSubmit={handleSubmit}>
+              <div className="space-y-4">
+                <div>
+                  <Label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                    placeholder="seu.email@exemplo.com"
+                    required
+                  />
+                </div>
 
-              <div>
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700 mb-1">
-                  Senha
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                  placeholder="********"
-                  required
-                />
-              </div>
+                <div>
+                  <Label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Senha
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                    placeholder="********"
+                    required
+                  />
+                </div>
 
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex items-center justify-center transition-colors"
-              >
-                {isLoading ? (
-                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
-                ) : (
-                  <>
-                    <LogIn className="mr-2 h-5 w-5" />
-                    Entrar
-                  </>
-                )}
-              </Button>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  {isLoading ? (
+                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                  ) : (
+                    "Entrar"
+                  )}
+                </Button>
+              </div>
             </form>
 
             <div className="mt-6 md:mt-8 text-center text-sm text-gray-500">
@@ -147,4 +155,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Auth;

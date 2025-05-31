@@ -1,212 +1,269 @@
-import { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { useAuth } from '../lib/auth';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { 
-  Box, 
-  LayoutDashboard, 
-  Package, 
-  Users, 
-  Truck, 
-  Warehouse, 
-  LogOut, 
-  ArrowRightToLine, 
-  Clipboard, 
-  BarChart3, 
-  Boxes, 
-  DollarSign,
+import React from 'react';
+import {
+  LayoutDashboard,
+  Package,
+  Users,
+  FileText,
+  Settings,
+  Truck,
+  ShoppingBag,
   Menu,
   X,
-  ChevronDown,
-  ChevronUp,
-  Grid3X3,
-  Layers,
-  LayoutGrid,
-  Target,
-  Ruler,
-  ArrowLeftRight
+  Warehouse,
+  MapPin,
+  Archive,
+  CheckSquare,
+  BarChart3,
+  Eye,
+  Scale,
+  BookOpen,
+  Zap,
 } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { useAuth } from '../lib/auth';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
-interface SidebarProps {
-  className?: string;
-}
+const Sidebar = () => {
+  const { logout } = useAuth();
+  const isMobile = useIsMobile();
+  const [isOpen, setIsOpen] = useState(false);
 
-interface SidebarItemProps {
-  icon: React.ElementType;
-  title: string;
-  to: string;
-  badge?: string | number;
-  permission?: 'initial' | 'second' | 'manager';
-}
+  const navigationSections = [
+    {
+      title: 'Principal',
+      items: [
+        {
+          name: 'Dashboard',
+          href: '/dashboard',
+          icon: LayoutDashboard
+        }
+      ]
+    },
+    {
+      title: 'Cadastros',
+      items: [
+        {
+          name: 'Produtos',
+          href: '/items',
+          icon: ShoppingBag
+        },
+        {
+          name: 'Grupos de Produtos',
+          href: '/groups',
+          icon: Package
+        },
+        {
+          name: 'Fornecedores',
+          href: '/suppliers',
+          icon: Truck
+        },
+        {
+          name: 'Armazéns',
+          href: '/warehouses',
+          icon: Warehouse
+        },
+        {
+          name: 'Localizações',
+          href: '/locations',
+          icon: MapPin
+        },
+        {
+          name: 'Racks',
+          href: '/racks',
+          icon: Archive
+        },
+        {
+          name: 'Zonas',
+          href: '/zones',
+          icon: MapPin
+        },
+        {
+          name: 'Tipos de Prateleira',
+          href: '/shelf-types',
+          icon: BookOpen
+        },
+        {
+          name: 'Usuários',
+          href: '/users',
+          icon: Users
+        }
+      ]
+    },
+    {
+      title: 'Eventos',
+      items: [
+        {
+          name: 'Entrada',
+          href: '/entry',
+          icon: CheckSquare
+        },
+        {
+          name: 'Inventário',
+          href: '/inventory',
+          icon: BarChart3
+        },
+        {
+          name: 'Transação',
+          href: '/transaction',
+          icon: Zap
+        },
+        {
+          name: 'Eventos',
+          href: '/events',
+          icon: FileText
+        },
+        {
+          name: 'Tarefas',
+          href: '/tasks',
+          icon: CheckSquare
+        }
+      ]
+    },
+    {
+      title: 'Gerenciamento',
+      items: [
+        {
+          name: 'Estatísticas',
+          href: '/statistics',
+          icon: BarChart3
+        },
+        {
+          name: 'Visualização 3D',
+          href: '/location-view',
+          icon: Eye
+        },
+        {
+          name: 'Balanço',
+          href: '/balance',
+          icon: Scale
+        },
+        {
+          name: 'Configurações',
+          href: '/settings',
+          icon: Settings
+        }
+      ]
+    }
+  ];
 
-interface SidebarGroupProps {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}
+  if (isMobile) {
+    return (
+      <>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="fixed top-4 left-4 z-50 md:hidden"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </Button>
 
-const SidebarItem = ({
-  icon: Icon,
-  title,
-  to,
-  badge,
-  permission = 'initial'
-}: SidebarItemProps) => {
-  const { hasPermission } = useAuth();
-  const location = useLocation();
-  const isActive = location.pathname === to;
-  
-  if (!hasPermission(permission)) return null;
-  
+        {isOpen && (
+          <div className="fixed inset-0 z-40 md:hidden">
+            <div className="fixed inset-0 bg-black/50" onClick={() => setIsOpen(false)} />
+            <div className="fixed left-0 top-0 h-full w-80 bg-gray-50 border-r border-gray-200 shadow-lg">
+              <div className="flex flex-col h-full">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h1 className="text-lg font-semibold text-gray-900">Painel Administrativo</h1>
+                </div>
+                
+                <nav className="flex-1 px-6 py-4 overflow-y-auto">
+                  <div className="space-y-6">
+                    {navigationSections.map((section) => (
+                      <div key={section.title}>
+                        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                          {section.title}
+                        </h3>
+                        <ul className="space-y-1">
+                          {section.items.map((item) => (
+                            <li key={item.name}>
+                              <NavLink
+                                to={item.href}
+                                onClick={() => setIsOpen(false)}
+                                className={({ isActive }) =>
+                                  cn(
+                                    "flex items-center px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-100 transition-colors",
+                                    isActive && "bg-gray-100 font-medium text-gray-900"
+                                  )
+                                }
+                              >
+                                <item.icon className="mr-3 h-4 w-4" />
+                                {item.name}
+                              </NavLink>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </nav>
+
+                <div className="px-6 py-4 border-t border-gray-200">
+                  <button
+                    onClick={logout}
+                    className="w-full py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 transition-colors"
+                  >
+                    Sair
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
-    <NavLink 
-      to={to}
-      className={({ isActive }) => cn(
-        "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all duration-200",
-        "group relative",
-        isActive 
-          ? "bg-primary text-primary-foreground" 
-          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      )}
-    >
-      <Icon className="h-5 w-5" />
-      <span className="flex-1">{title}</span>
-      {badge && (
-        <span className={cn(
-          "px-2 py-0.5 rounded-full text-xs",
-          isActive 
-            ? "bg-white/20 text-white" 
-            : "bg-primary/10 text-primary"
-        )}>
-          {badge}
-        </span>
-      )}
-      
-      <span className={cn(
-        "absolute inset-0 rounded-md transition-opacity",
-        "bg-gradient-to-r from-primary/10 to-transparent opacity-0",
-        "group-hover:opacity-100",
-        isActive && "opacity-0"
-      )} />
-    </NavLink>
-  );
-};
+    <div className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-64 md:bg-gray-50 md:border-r md:border-gray-200">
+      <div className="flex flex-col h-full">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h1 className="text-lg font-semibold text-gray-900">Painel Administrativo</h1>
+        </div>
+        
+        <nav className="flex-1 px-6 py-4 overflow-y-auto">
+          <div className="space-y-6">
+            {navigationSections.map((section) => (
+              <div key={section.title}>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  {section.title}
+                </h3>
+                <ul className="space-y-1">
+                  {section.items.map((item) => (
+                    <li key={item.name}>
+                      <NavLink
+                        to={item.href}
+                        className={({ isActive }) =>
+                          cn(
+                            "flex items-center px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-100 transition-colors",
+                            isActive && "bg-gray-100 font-medium text-gray-900"
+                          )
+                        }
+                      >
+                        <item.icon className="mr-3 h-4 w-4" />
+                        {item.name}
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </nav>
 
-const SidebarGroup = ({ title, children, defaultOpen = true }: SidebarGroupProps) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  
-  return (
-    <div className="mb-4">
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-sidebar-foreground/70"
-      >
-        <span>{title}</span>
-        {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-      </button>
-      
-      <div className={cn(
-        "space-y-1 overflow-hidden transition-all duration-200",
-        isOpen ? "max-h-96" : "max-h-0"
-      )}>
-        {children}
+        <div className="px-6 py-4 border-t border-gray-200">
+          <button
+            onClick={logout}
+            className="w-full py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 transition-colors"
+          >
+            Sair
+          </button>
+        </div>
       </div>
     </div>
-  );
-};
-
-const Sidebar = ({ className }: SidebarProps) => {
-  const isMobile = useIsMobile();
-  const [isOpen, setIsOpen] = useState(!isMobile);
-  const { user, logout } = useAuth();
-  
-  useEffect(() => {
-    setIsOpen(!isMobile);
-  }, [isMobile]);
-  
-  return (
-    <>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 p-2 rounded-md bg-background shadow-md lg:hidden"
-        aria-label="Toggle menu"
-      >
-        {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </button>
-      
-      {isMobile && isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-      
-      <aside className={cn(
-        "fixed top-0 left-0 z-50 h-full w-64 bg-sidebar p-4",
-        "shadow-md border-r border-sidebar-border",
-        "transition-transform duration-300 ease-in-out",
-        "glass",
-        !isOpen && "-translate-x-full",
-        "lg:translate-x-0",
-        className
-      )}>
-        <div className="flex flex-col h-full">
-          <div className="flex items-center mb-8 px-2">
-            <div className="bg-primary text-primary-foreground p-2 rounded-lg">
-              <Box className="h-6 w-6" />
-            </div>
-            <h1 className="ml-3 text-lg font-semibold">MALLDRE WMS</h1>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto space-y-1">
-            <SidebarItem icon={LayoutDashboard} title="Dashboard" to="/dashboard" />
-            
-            <SidebarGroup title="Cadastros">
-              <SidebarItem icon={Package} title="Itens" to="/items" />
-              <SidebarItem icon={Truck} title="Fornecedores" to="/suppliers" />
-              <SidebarItem icon={Box} title="Categorias" to="/groups" />
-              <SidebarItem icon={Warehouse} title="Armazéns" to="/warehouses" />
-              <SidebarItem icon={Users} title="Usuários" to="/users" permission="manager" />
-            </SidebarGroup>
-            
-            <SidebarGroup title="Localizações">
-              <SidebarItem icon={Target} title="Zonas" to="/zones" />
-              <SidebarItem icon={Ruler} title="Tipos de Prateleiras" to="/shelf-types" />
-              <SidebarItem icon={Grid3X3} title="Racks/Prateleiras" to="/racks" />
-            </SidebarGroup>
-            
-            <SidebarGroup title="Eventos">
-              <SidebarItem icon={ArrowRightToLine} title="Entrada" to="/entry" />
-              <SidebarItem icon={Clipboard} title="Inventário" to="/inventory" />
-              <SidebarItem icon={ArrowLeftRight} title="Transação" to="/transaction" />
-            </SidebarGroup>
-            
-            <SidebarGroup title="Exibições">
-              <SidebarItem icon={Clipboard} title="Lista de Tarefas" to="/tasks" />
-              <SidebarItem icon={BarChart3} title="Estatísticas" to="/statistics" />
-              <SidebarItem icon={Boxes} title="Visualização 3D" to="/location-view" />
-              <SidebarItem icon={DollarSign} title="Resumo de Saldo" to="/balance" />
-            </SidebarGroup>
-          </div>
-          
-          <div className="mt-auto pt-4 border-t border-sidebar-border">
-            <div className="px-3 py-2 mb-2">
-              <div className="text-sm font-medium">{user?.name}</div>
-              <div className="text-xs text-sidebar-foreground/70">{user?.email}</div>
-            </div>
-            
-            <button
-              onClick={logout}
-              className="flex items-center gap-3 px-3 py-2 rounded-md text-sm w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-            >
-              <LogOut className="h-5 w-5" />
-              <span>Sair</span>
-            </button>
-          </div>
-        </div>
-      </aside>
-    </>
   );
 };
 

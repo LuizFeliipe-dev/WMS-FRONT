@@ -3,39 +3,32 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Shield } from "lucide-react";
-import { UserPermissionModule, PermissionData } from "@/types/auth";
-import PermissionsTable from "./permissions/PermissionsTable";
+import { Role } from "@/types/role";
+import RoleSelector from "./permissions/RoleSelector";
 
 interface UserPermissionsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userName: string;
-  initialPermissions?: PermissionData[];
-  onSave: (permissions: PermissionData[]) => void;
+  initialRoles?: Role[];
+  onSave: (roles: Role[]) => void;
 }
-
-const defaultModules: UserPermissionModule[] = [
-  'USUARIO',
-  'ARMAZEM',
-  'INVENTARIO',
-  'RELATORIO'
-];
 
 const UserPermissionsModal = ({
   open,
   onOpenChange,
   userName,
-  initialPermissions,
+  initialRoles = [],
   onSave
 }: UserPermissionsModalProps) => {
-  const [currentPermissions, setCurrentPermissions] = useState<PermissionData[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<Role[]>(initialRoles);
 
-  const handlePermissionsChange = (permissions: PermissionData[]) => {
-    setCurrentPermissions(permissions);
+  const handleRolesChange = (roles: Role[]) => {
+    setSelectedRoles(roles);
   };
 
   const handleSave = () => {
-    onSave(currentPermissions);
+    onSave(selectedRoles);
     onOpenChange(false);
   };
 
@@ -45,17 +38,16 @@ const UserPermissionsModal = ({
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <Shield className="mr-2 h-5 w-5 text-primary" />
-            Permissões do Usuário
+            Funções do Usuário
           </DialogTitle>
           <DialogDescription>
-            Configure as permissões de acesso para {userName}.
+            Configure as funções de acesso para {userName}.
           </DialogDescription>
         </DialogHeader>
 
-        <PermissionsTable
-          initialPermissions={initialPermissions}
-          defaultModules={defaultModules}
-          onChange={handlePermissionsChange}
+        <RoleSelector
+          selectedRoles={selectedRoles}
+          onChange={handleRolesChange}
         />
 
         <DialogFooter className="mt-6">
@@ -64,7 +56,7 @@ const UserPermissionsModal = ({
           </Button>
           <Button onClick={handleSave}>
             <Shield className="mr-2 h-4 w-4" />
-            Salvar Permissões
+            Salvar Funções
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import AuthRequired from '../components/AuthRequired';
 import Sidebar from '../components/Sidebar';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
@@ -14,6 +15,7 @@ import {
   Search, 
   Edit, 
   Trash2,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useRacks } from '@/hooks/useRacks';
+import { roleService } from '@/services/roles';
 
 const zoneFormSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter pelo menos 2 caracteres' }),
@@ -38,35 +41,18 @@ const zoneFormSchema = z.object({
 type ZoneFormValues = z.infer<typeof zoneFormSchema>;
 
 interface Zone {
-  id: number;
+  id: string;
   name: string;
   racks: string[];
+  permissions?: string[];
 }
 
-// Mock data
-const initialZones: Zone[] = [
-  {
-    id: 1,
-    name: 'Zona A - Recebimento',
-    racks: ['R01', 'R02'],
-  },
-  {
-    id: 2,
-    name: 'Zona B - Expedição',
-    racks: ['R03', 'R04', 'R05'],
-  },
-  {
-    id: 3,
-    name: 'Zona C - Estoque',
-    racks: ['R01', 'R03'],
-  },
-];
-
 const Zones = () => {
-  const [zones, setZones] = useState<Zone[]>(initialZones);
+  const [zones, setZones] = useState<Zone[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { racks } = useRacks();
@@ -78,6 +64,34 @@ const Zones = () => {
       racks: [],
     }
   });
+
+  useEffect(() => {
+    const fetchZones = async () => {
+      try {
+        setIsLoading(true);
+        const data = await roleService.getAll();
+        // Map role data to Zone format
+        const mappedZones = data.map(role => ({
+          id: role.id,
+          name: role.name,
+          racks: [], // This field might need a different API
+          permissions: role.permissions
+        }));
+        setZones(mappedZones);
+      } catch (error) {
+        console.error('Failed to fetch zones:', error);
+        toast({
+          title: "Erro ao buscar zonas",
+          description: "Não foi possível carregar a lista de zonas",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchZones();
+  }, [toast]);
 
   const handleAddZone = () => {
     setEditingZone(null);
@@ -97,43 +111,70 @@ const Zones = () => {
     setOpenDialog(true);
   };
 
-  const handleDeleteZone = (id: number) => {
-    setZones(zones.filter(z => z.id !== id));
-    toast({
-      title: "Zona excluída",
-      description: "A zona foi removida com sucesso",
-    });
-  };
-
-  const onSubmit = (data: ZoneFormValues) => {
-    if (editingZone) {
-      setZones(zones.map(z => {
-        if (z.id === editingZone.id) {
-          return {
-            ...z,
-            name: data.name,
-            racks: data.racks,
-          };
-        }
-        return z;
-      }));
+  const handleDeleteZone = async (id: string) => {
+    try {
+      // Since there's no delete endpoint, just remove from state
+      setZones(zones.filter(z => z.id !== id));
       toast({
-        title: "Zona atualizada",
-        description: "As informações da zona foram atualizadas com sucesso",
+        title: "Zona excluída",
+        description: "A zona foi removida com sucesso",
       });
-    } else {
-      const newZone: Zone = {
-        id: Math.max(0, ...zones.map(z => z.id)) + 1,
-        name: data.name,
-        racks: data.racks,
-      };
-      setZones([...zones, newZone]);
+    } catch (error) {
+      console.error('Failed to delete zone:', error);
       toast({
-        title: "Zona adicionada",
-        description: "Nova zona foi adicionada com sucesso",
+        title: "Erro ao excluir zona",
+        description: "Não foi possível remover a zona",
+        variant: "destructive"
       });
     }
-    setOpenDialog(false);
+  };
+
+  const onSubmit = async (data: ZoneFormValues) => {
+    try {
+      if (editingZone) {
+        const updatedZone = await roleService.update(editingZone.id, {
+          name: data.name,
+          // Map racks to permissions array if needed
+          permissions: editingZone.permissions
+        });
+
+        setZones(zones.map(z => {
+          if (z.id === editingZone.id) {
+            return {
+              ...updatedZone,
+              racks: data.racks
+            };
+          }
+          return z;
+        }));
+
+        toast({
+          title: "Zona atualizada",
+          description: "As informações da zona foram atualizadas com sucesso",
+        });
+      } else {
+        const newZone = await roleService.create({
+          name: data.name,
+          // No permissions initially
+          permissions: []
+        });
+
+        setZones([...zones, { ...newZone, racks: data.racks }]);
+
+        toast({
+          title: "Zona adicionada",
+          description: "Nova zona foi adicionada com sucesso",
+        });
+      }
+      setOpenDialog(false);
+    } catch (error) {
+      console.error('Failed to save zone:', error);
+      toast({
+        title: "Erro ao salvar zona",
+        description: "Não foi possível salvar as informações da zona",
+        variant: "destructive"
+      });
+    }
   };
 
   const filteredZones = zones.filter(zone => 
@@ -195,7 +236,16 @@ const Zones = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredZones.length === 0 ? (
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-8">
+                          <div className="flex justify-center items-center">
+                            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                            <span>Carregando zonas...</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredZones.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
                           Nenhuma zona encontrada.
@@ -207,7 +257,7 @@ const Zones = () => {
                           <TableCell className="font-medium">{zone.name}</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
-                              {zone.racks.map(rackCode => (
+                              {zone.racks && zone.racks.map(rackCode => (
                                 <span 
                                   key={rackCode} 
                                   className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"

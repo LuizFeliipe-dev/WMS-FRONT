@@ -2,13 +2,11 @@
 import * as z from 'zod';
 
 export const itemFormSchema = z.object({
-  code: z.string().min(1, 'Código é obrigatório'),
+  id: z.string().optional(),
   name: z.string().min(1, 'Nome é obrigatório'),
-  description: z.string().optional(),
-  group: z.string().min(1, 'Grupo é obrigatório'),
-  supplier: z.string().min(1, 'Fornecedor é obrigatório'),
-  minStock: z.number().min(0, 'Estoque mínimo deve ser maior ou igual a 0'),
-  price: z.number().min(0, 'Preço deve ser maior ou igual a 0'),
+  description: z.string().min(1, 'Descrição é obrigatória'),
+  measurementUnit: z.string().min(1, 'Unidade de medida é obrigatória'),
+  productGroupId: z.string().min(1, 'Grupo é obrigatório'),
   active: z.boolean().default(true),
 });
 

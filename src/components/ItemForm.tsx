@@ -14,50 +14,47 @@ import { Switch } from '@/components/ui/switch';
 interface ItemFormProps {
   initialData?: ItemFormValues | null;
   onSubmit: (data: ItemFormValues) => void;
-  suppliers: { id: string; name: string }[];
   groups: { id: string; name: string }[];
 }
 
 const ItemForm = ({
   initialData,
   onSubmit,
-  suppliers,
   groups
 }: ItemFormProps) => {
   const form = useForm<ItemFormValues>({
     resolver: zodResolver(itemFormSchema),
     defaultValues: initialData || {
-      code: '',
       name: '',
       description: '',
-      group: '',
-      supplier: '',
-      minStock: 0,
-      price: 0,
+      measurementUnit: '',
+      productGroupId: '',
       active: true,
     }
   });
 
+  const measurementUnits = [
+    { id: 'UN', name: 'Unidade (UN)' },
+    { id: 'KG', name: 'Quilograma (KG)' },
+    { id: 'G', name: 'Grama (G)' },
+    { id: 'L', name: 'Litro (L)' },
+    { id: 'ML', name: 'Mililitro (ML)' },
+    { id: 'M', name: 'Metro (M)' },
+    { id: 'CM', name: 'Centímetro (CM)' },
+    { id: 'PC', name: 'Peça (PC)' },
+    { id: 'CX', name: 'Caixa (CX)' },
+    { id: 'PCT', name: 'Pacote (PCT)' },
+  ];
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <InputField
-            form={form}
-            name="code"
-            label="Código"
-            placeholder="ITM001"
-          />
-          
-          <div className="md:col-span-2">
-            <InputField
-              form={form}
-              name="name"
-              label="Nome do Item"
-              placeholder="Nome do item"
-            />
-          </div>
-        </div>
+        <InputField
+          form={form}
+          name="name"
+          label="Nome do Item"
+          placeholder="Nome do item"
+        />
         
         <TextAreaField
           form={form}
@@ -70,37 +67,18 @@ const ItemForm = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <SelectField
             form={form}
-            name="group"
-            label="Grupo"
-            options={groups}
-            placeholder="Selecione um grupo"
+            name="measurementUnit"
+            label="Unidade de Medida"
+            options={measurementUnits}
+            placeholder="Selecione a unidade"
           />
           
           <SelectField
             form={form}
-            name="supplier"
-            label="Fornecedor"
-            options={suppliers}
-            placeholder="Selecione um fornecedor"
-          />
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InputField
-            form={form}
-            name="minStock"
-            label="Estoque Mínimo"
-            type="number"
-            min="0"
-          />
-          
-          <InputField
-            form={form}
-            name="price"
-            label="Preço Unitário (R$)"
-            type="number"
-            min="0"
-            step="0.01"
+            name="productGroupId"
+            label="Grupo"
+            options={groups}
+            placeholder="Selecione um grupo"
           />
         </div>
         

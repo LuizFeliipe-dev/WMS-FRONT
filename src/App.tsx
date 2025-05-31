@@ -10,6 +10,7 @@ import Sidebar from "./components/Sidebar";
 
 // Pages
 import Login from "./pages/Login";
+import Auth from "./pages/auth";
 import Dashboard from "./pages/Dashboard";
 import Items from "./pages/Items";
 import Users from "./pages/Users";
@@ -18,6 +19,7 @@ import Warehouses from "./pages/Warehouses";
 import Groups from "./pages/Groups";
 import Events from "./pages/Events";
 import NotFound from "./pages/NotFound";
+import Settings from "./pages/Settings";
 import TransactionSection from "./components/events/TransactionSection";
 import EntrySection from "./components/events/EntrySection";
 import InventorySection from "./components/events/InventorySection";
@@ -115,6 +117,7 @@ const App = () => {
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/auth" element={<Auth />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/items" element={<Items />} />
                 <Route path="/suppliers" element={<Suppliers />} />

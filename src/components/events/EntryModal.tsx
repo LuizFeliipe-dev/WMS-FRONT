@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { suppliers, useItems } from '@/hooks/useItems';
+import { useItems } from '@/hooks/useItems';
+import { useSuppliers } from '@/hooks/useSuppliers';
 import { useLocations } from '@/hooks/useLocations';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Minus, Trash2 } from 'lucide-react';
@@ -51,6 +52,7 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
   ]);
   const { toast } = useToast();
   const { items } = useItems();
+  const { suppliers } = useSuppliers();
   const { locations } = useLocations();
 
   const handleAddProduct = () => {

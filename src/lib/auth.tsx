@@ -1,7 +1,9 @@
+
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { authService } from '../services/auth';
 
 // Types
-type UserPermission = 'initial' | 'second' | 'manager';
+export type UserPermission = 'initial' | 'second' | 'manager';
 
 export interface User {
   id: string;
@@ -19,7 +21,7 @@ interface AuthContextType {
   hasPermission: (requiredPermission: UserPermission) => boolean;
 }
 
-// Mock users for demo
+// Mock users for demo - will be removed when using the real API
 const MOCK_USERS: User[] = [
   { 
     id: '1', 
@@ -50,39 +52,67 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Check if user is stored in localStorage
-    const storedUser = localStorage.getItem('malldre_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    // Check if user and token are stored in localStorage
+    try {
+      const storedUser = localStorage.getItem('malldre_user');
+      const token = localStorage.getItem('malldre_token');
+      
+      if (storedUser && token) {
+        setUser(JSON.parse(storedUser));
+      }
+    } catch (error) {
+      console.error('Error parsing stored user data:', error);
+      // Limpa os dados inválidos
+      localStorage.removeItem('malldre_user');
+      localStorage.removeItem('malldre_token');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     
-    // Simulate API call
-    return new Promise<void>((resolve, reject) => {
-      setTimeout(() => {
-        // Find user with matching email
-        const foundUser = MOCK_USERS.find(u => u.email === email);
-        
-        if (foundUser && password === '123456') { // Mock password check
-          setUser(foundUser);
-          localStorage.setItem('malldre_user', JSON.stringify(foundUser));
-          setIsLoading(false);
-          resolve();
-        } else {
-          setIsLoading(false);
-          reject(new Error('Email ou senha inválidos'));
-        }
-      }, 800); // Simulate network delay
-    });
+    try {
+      console.log('Attempting API login...');
+      // Tenta usar a API para login
+      const response = await authService.login(email, password);
+      console.log('API login successful:', response);
+      
+      // O token e usuário já são salvos dentro da função authService.login
+      setUser(response.user);
+      setIsLoading(false);
+      return; // Return early since login was successful
+    } catch (error) {
+      console.log('API login failed, trying mock login for development');
+      
+      // Fallback para mock login em desenvolvimento
+      return new Promise<void>((resolve, reject) => {
+        setTimeout(() => {
+          // Encontra usuário com email correspondente
+          const foundUser = MOCK_USERS.find(u => u.email === email);
+          
+          if (foundUser && password === '123456') { // Mock password check
+            console.log('Mock login successful');
+            setUser(foundUser);
+            localStorage.setItem('malldre_user', JSON.stringify(foundUser));
+            localStorage.setItem('malldre_token', 'mock-token-for-development');
+            setIsLoading(false);
+            resolve();
+          } else {
+            console.log('Mock login failed');
+            setIsLoading(false);
+            reject(new Error('Email ou senha inválidos'));
+          }
+        }, 800); // Simula atraso de rede
+      });
+    }
   };
 
   const logout = () => {
+    authService.logout();
     setUser(null);
-    localStorage.removeItem('malldre_user');
+    // No navigating here, this should be handled in the UI components
   };
 
   const hasPermission = (requiredPermission: UserPermission): boolean => {

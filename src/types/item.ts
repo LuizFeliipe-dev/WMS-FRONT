@@ -2,19 +2,18 @@
 import { z } from 'zod';
 import { itemFormSchema } from '@/components/items/form/ItemFormSchema';
 
-export type ItemFormValues = z.infer<typeof itemFormSchema>;
+export type ItemFormValues = z.infer<typeof itemFormSchema> & {
+  id?: string;
+};
 
 export interface Item {
-  id: number;
-  code: string;
+  id: string;
   name: string;
-  description?: string;
-  group: string;
-  groupName: string;
-  supplier: string;
-  supplierName: string;
-  stock: number;
-  minStock: number;
-  price: number;
+  description: string;
+  measurementUnit: string;
+  productGroupId: string;
   active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  accessLogId: string;
 }

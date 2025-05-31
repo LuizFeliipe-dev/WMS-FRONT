@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AuthRequired from '../components/AuthRequired';
 import Sidebar from '../components/Sidebar';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
@@ -17,6 +17,7 @@ import {
   Trash2,
   Check,
   X,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ShelfType, shelfTypeService } from '@/services/shelfTypes';
 
 const shelfTypeFormSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter pelo menos 2 caracteres' }),
@@ -43,52 +45,15 @@ const shelfTypeFormSchema = z.object({
 
 type ShelfTypeFormValues = z.infer<typeof shelfTypeFormSchema>;
 
-interface ShelfType {
-  id: number;
-  name: string;
-  height: number;
-  width: number;
-  depth: number;
-  maxWeight: number;
-  canStack: boolean;
-}
-
-// Mock data
-const initialShelfTypes: ShelfType[] = [
-  {
-    id: 1,
-    name: 'Prateleira Standard',
-    height: 200,
-    width: 100,
-    depth: 60,
-    maxWeight: 500,
-    canStack: true
-  },
-  {
-    id: 2,
-    name: 'Prateleira Reforçada',
-    height: 220,
-    width: 120,
-    depth: 80,
-    maxWeight: 1200,
-    canStack: false
-  },
-  {
-    id: 3,
-    name: 'Prateleira Compacta',
-    height: 150,
-    width: 80,
-    depth: 40,
-    maxWeight: 250,
-    canStack: true
-  },
-];
-
 const ShelfTypes = () => {
-  const [shelfTypes, setShelfTypes] = useState<ShelfType[]>(initialShelfTypes);
+  const [shelfTypes, setShelfTypes] = useState<ShelfType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [editingShelfType, setEditingShelfType] = useState<ShelfType | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [shelfTypeToDelete, setShelfTypeToDelete] = useState<ShelfType | null>(null);
+  
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -103,6 +68,28 @@ const ShelfTypes = () => {
       canStack: false,
     }
   });
+
+  // Fetch shelf types on component mount
+  useEffect(() => {
+    fetchShelfTypes();
+  }, []);
+
+  const fetchShelfTypes = async () => {
+    try {
+      setIsLoading(true);
+      const data = await shelfTypeService.getAll();
+      setShelfTypes(data);
+    } catch (error) {
+      console.error('Failed to fetch shelf types:', error);
+      toast({
+        title: "Erro ao carregar tipos de prateleiras",
+        description: "Não foi possível obter a lista de tipos de prateleiras",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleAddShelfType = () => {
     setEditingShelfType(null);
@@ -130,51 +117,76 @@ const ShelfTypes = () => {
     setOpenDialog(true);
   };
 
-  const handleDeleteShelfType = (id: number) => {
-    setShelfTypes(shelfTypes.filter(st => st.id !== id));
-    toast({
-      title: "Tipo de prateleira excluído",
-      description: "O tipo de prateleira foi removido com sucesso",
-    });
+  const handleConfirmDelete = async () => {
+    if (shelfTypeToDelete) {
+      try {
+        await shelfTypeService.delete(shelfTypeToDelete.id);
+        setShelfTypes(shelfTypes.filter(st => st.id !== shelfTypeToDelete.id));
+        toast({
+          title: "Tipo de prateleira excluído",
+          description: "O tipo de prateleira foi removido com sucesso",
+        });
+      } catch (error) {
+        console.error('Failed to delete shelf type:', error);
+        toast({
+          title: "Erro ao excluir",
+          description: "Não foi possível excluir o tipo de prateleira",
+          variant: "destructive"
+        });
+      } finally {
+        setDeleteDialogOpen(false);
+        setShelfTypeToDelete(null);
+      }
+    }
   };
 
-  const onSubmit = (data: ShelfTypeFormValues) => {
-    if (editingShelfType) {
-      setShelfTypes(shelfTypes.map(st => {
-        if (st.id === editingShelfType.id) {
-          return {
-            ...st,
-            name: data.name,
-            height: data.height,
-            width: data.width,
-            depth: data.depth,
-            maxWeight: data.maxWeight,
-            canStack: data.canStack,
-          };
-        }
-        return st;
-      }));
+  const handleDeleteShelfType = (shelfType: ShelfType) => {
+    setShelfTypeToDelete(shelfType);
+    setDeleteDialogOpen(true);
+  };
+
+  const onSubmit = async (data: ShelfTypeFormValues) => {
+    try {
+      if (editingShelfType) {
+        // Update existing shelf type
+        const updated = await shelfTypeService.update(editingShelfType.id, data);
+        setShelfTypes(shelfTypes.map(st => {
+          if (st.id === editingShelfType.id) {
+            return updated;
+          }
+          return st;
+        }));
+        toast({
+          title: "Tipo de prateleira atualizado",
+          description: "As informações do tipo de prateleira foram atualizadas com sucesso",
+        });
+      } else {
+        // Create new shelf type - ensure all required fields are present
+        const newShelfTypeData: Omit<ShelfType, 'id'> = {
+          name: data.name,
+          height: data.height,
+          width: data.width,
+          depth: data.depth,
+          maxWeight: data.maxWeight,
+          canStack: data.canStack
+        };
+        
+        const created = await shelfTypeService.create(newShelfTypeData);
+        setShelfTypes([...shelfTypes, created]);
+        toast({
+          title: "Tipo de prateleira adicionado",
+          description: "Novo tipo de prateleira foi adicionado com sucesso",
+        });
+      }
+      setOpenDialog(false);
+    } catch (error) {
+      console.error('Failed to save shelf type:', error);
       toast({
-        title: "Tipo de prateleira atualizado",
-        description: "As informações do tipo de prateleira foram atualizadas com sucesso",
-      });
-    } else {
-      const newShelfType: ShelfType = {
-        id: Math.max(0, ...shelfTypes.map(st => st.id)) + 1,
-        name: data.name,
-        height: data.height,
-        width: data.width,
-        depth: data.depth,
-        maxWeight: data.maxWeight,
-        canStack: data.canStack,
-      };
-      setShelfTypes([...shelfTypes, newShelfType]);
-      toast({
-        title: "Tipo de prateleira adicionado",
-        description: "Novo tipo de prateleira foi adicionado com sucesso",
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar o tipo de prateleira",
+        variant: "destructive"
       });
     }
-    setOpenDialog(false);
   };
 
   const filteredShelfTypes = shelfTypes.filter(shelfType => 
@@ -233,10 +245,19 @@ const ShelfTypes = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredShelfTypes.length === 0 ? (
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={isMobile ? 4 : 5} className="text-center py-6">
+                          <div className="flex justify-center items-center space-x-2">
+                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            <span>Carregando tipos de prateleiras...</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredShelfTypes.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={isMobile ? 4 : 5} className="text-center py-6 text-muted-foreground">
-                          Nenhum tipo de prateleira encontrado.
+                          {searchTerm ? "Nenhum tipo de prateleira encontrado com este termo." : "Nenhum tipo de prateleira cadastrado."}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -272,7 +293,7 @@ const ShelfTypes = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDeleteShelfType(shelfType.id)}
+                                onClick={() => handleDeleteShelfType(shelfType)}
                               >
                                 <Trash2 className="h-4 w-4 text-red-500" />
                               </Button>
@@ -426,6 +447,31 @@ const ShelfTypes = () => {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Tipo de Prateleira</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir "{shelfTypeToDelete?.name}"? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex space-x-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleConfirmDelete}
+            >
+              Excluir
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </AuthRequired>

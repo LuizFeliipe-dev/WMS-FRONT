@@ -1,7 +1,7 @@
 
 import { Item } from "@/types/item";
 import { Button } from "@/components/ui/button";
-import { Edit, ToggleLeft } from "lucide-react";
+import { Edit, ToggleLeft, Trash2, Loader2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -12,23 +12,33 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { groups } from "@/hooks/useItems";
 
 interface ItemsTableProps {
   items: Item[];
+  isLoading?: boolean;
   onEdit: (item: Item) => void;
   onToggleStatus: (item: Item) => void;
+  onDelete: (item: Item) => void;
   filteredCount: number;
   totalCount: number;
 }
 
 const ItemsTable = ({
   items,
+  isLoading = false,
   onEdit,
   onToggleStatus,
+  onDelete,
   filteredCount,
   totalCount,
 }: ItemsTableProps) => {
   const isMobile = useIsMobile();
+
+  const getGroupName = (groupId: string) => {
+    const group = groups.find(g => g.id === groupId);
+    return group?.name || 'Grupo não encontrado';
+  };
 
   return (
     <>
@@ -36,21 +46,31 @@ const ItemsTable = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">Código</TableHead>
               <TableHead>Nome</TableHead>
+              <TableHead>Descrição</TableHead>
+              {!isMobile && <TableHead>Unidade</TableHead>}
               {!isMobile && <TableHead>Grupo</TableHead>}
-              {!isMobile && <TableHead>Fornecedor</TableHead>}
-              <TableHead>Estoque</TableHead>
-              <TableHead>Preço</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.length === 0 ? (
+            {isLoading ? (
               <TableRow>
                 <TableCell
-                  colSpan={isMobile ? 5 : 7}
+                  colSpan={isMobile ? 4 : 6}
+                  className="h-24 text-center"
+                >
+                  <div className="flex justify-center items-center space-x-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <span>Carregando itens...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : items.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={isMobile ? 4 : 6}
                   className="h-24 text-center"
                 >
                   Nenhum item encontrado.
@@ -59,18 +79,14 @@ const ItemsTable = ({
             ) : (
               items.map((item) => (
                 <TableRow key={item.id} className="hover:bg-gray-50 transition-colors">
-                  <TableCell className="font-medium">{item.code}</TableCell>
-                  <TableCell className="max-w-[200px] truncate">
+                  <TableCell className="font-medium max-w-[200px] truncate">
                     {item.name}
                   </TableCell>
-                  {!isMobile && <TableCell>{item.groupName}</TableCell>}
-                  {!isMobile && <TableCell>{item.supplierName}</TableCell>}
-                  <TableCell>{item.stock}</TableCell>
-                  <TableCell>
-                    {typeof item.price === "number"
-                      ? `R$ ${item.price.toFixed(2)}`
-                      : item.price}
+                  <TableCell className="max-w-[200px] truncate">
+                    {item.description}
                   </TableCell>
+                  {!isMobile && <TableCell>{item.measurementUnit}</TableCell>}
+                  {!isMobile && <TableCell>{getGroupName(item.productGroupId)}</TableCell>}
                   <TableCell>
                     <Badge 
                       variant={item.active ? "default" : "outline"}
@@ -98,6 +114,15 @@ const ItemsTable = ({
                         title={item.active ? "Desativar" : "Ativar"}
                       >
                         <ToggleLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => onDelete(item)}
+                        title="Excluir"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>

@@ -1,12 +1,14 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AuthRequired from '../components/AuthRequired';
 import Sidebar from '../components/Sidebar';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { UserData, UserFormValues } from '@/types/user';
-import { UserPermission, PermissionData } from '@/types/auth';
+import { UserPermission } from '@/types/auth';
+import { Role } from '@/types/role';
+import { userService } from '@/services/users';
 
 // Components
 import UserHeader from '@/components/users/UserHeader';
@@ -15,93 +17,42 @@ import UserTable from '@/components/users/UserTable';
 import UserFormDialog from '@/components/users/UserFormDialog';
 import UserPermissionsModal from '@/components/users/UserPermissionsModal';
 
-// Mock data
-const mockUsers: UserData[] = [
-  { 
-    id: '1', 
-    name: 'Usuário Básico', 
-    email: 'basic@malldre.com', 
-    role: 'Operador',
-    department: 'Logística',
-    permission: 'initial',
-    lastAccess: '2023-08-15 14:30',
-    permissions: [
-      { module: 'USUARIO', read: true, write: false },
-      { module: 'ARMAZEM', read: true, write: false },
-      { module: 'INVENTARIO', read: true, write: false },
-      { module: 'RELATORIO', read: true, write: false }
-    ]
-  },
-  { 
-    id: '2', 
-    name: 'Usuário Intermediário', 
-    email: 'mid@malldre.com', 
-    role: 'Supervisor',
-    department: 'Operações',
-    permission: 'second',
-    lastAccess: '2023-08-16 09:45',
-    permissions: [
-      { module: 'USUARIO', read: true, write: true },
-      { module: 'ARMAZEM', read: true, write: true },
-      { module: 'INVENTARIO', read: true, write: false },
-      { module: 'RELATORIO', read: true, write: false }
-    ]
-  },
-  { 
-    id: '3', 
-    name: 'Gerente', 
-    email: 'manager@malldre.com', 
-    role: 'Administrador',
-    department: 'Diretoria',
-    permission: 'manager',
-    lastAccess: '2023-08-16 11:20',
-    permissions: [
-      { module: 'USUARIO', read: true, write: true },
-      { module: 'ARMAZEM', read: true, write: true },
-      { module: 'INVENTARIO', read: true, write: true },
-      { module: 'RELATORIO', read: true, write: true }
-    ]
-  },
-  { 
-    id: '4', 
-    name: 'Ana Silva', 
-    email: 'ana.silva@malldre.com', 
-    role: 'Operador',
-    department: 'Estoque',
-    permission: 'initial',
-    lastAccess: '2023-08-14 16:05',
-    permissions: [
-      { module: 'USUARIO', read: false, write: false },
-      { module: 'ARMAZEM', read: true, write: false },
-      { module: 'INVENTARIO', read: true, write: false },
-      { module: 'RELATORIO', read: true, write: false }
-    ]
-  },
-  { 
-    id: '5', 
-    name: 'Roberto Santos', 
-    email: 'roberto.santos@malldre.com', 
-    role: 'Supervisor',
-    department: 'Expedição',
-    permission: 'second',
-    lastAccess: '2023-08-15 10:30',
-    permissions: [
-      { module: 'USUARIO', read: true, write: false },
-      { module: 'ARMAZEM', read: true, write: true },
-      { module: 'INVENTARIO', read: true, write: true },
-      { module: 'RELATORIO', read: true, write: false }
-    ]
-  },
-];
-
 const Users = () => {
-  const [users, setUsers] = useState<UserData[]>(mockUsers);
+  const [users, setUsers] = useState<UserData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<(UserFormValues & { id: string }) | null>(null);
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setIsLoading(true);
+        const data = await userService.getAll();
+        // Map cargo to role for backwards compatibility
+        const mappedData = data.map(user => ({
+          ...user,
+          role: user.cargo || user.role,
+          lastAccess: user.updatedAt ? new Date(user.updatedAt).toLocaleDateString('pt-BR') : 'Não disponível'
+        }));
+        setUsers(mappedData);
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+        toast({
+          title: "Erro ao buscar usuários",
+          description: "Não foi possível carregar a lista de usuários",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, [toast]);
 
   const handleAddUser = () => {
     setEditingUser(null);
@@ -113,19 +64,29 @@ const Users = () => {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role,
+      role: user.cargo || user.role,
       department: user.department,
       permission: user.permission as UserPermission,
     });
     setOpenDialog(true);
   };
 
-  const handleDeleteUser = (userId: string) => {
-    setUsers(users.filter(user => user.id !== userId));
-    toast({
-      title: "Usuário excluído",
-      description: "O usuário foi removido com sucesso",
-    });
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await userService.delete(userId);
+      setUsers(users.filter(user => user.id !== userId));
+      toast({
+        title: "Usuário excluído",
+        description: "O usuário foi removido com sucesso",
+      });
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      toast({
+        title: "Erro ao excluir usuário",
+        description: "Não foi possível remover o usuário",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleOpenPermissions = (user: UserData) => {
@@ -133,67 +94,100 @@ const Users = () => {
     setPermissionsModalOpen(true);
   };
 
-  const handleSavePermissions = (permissions: PermissionData[]) => {
+  const handleSaveRoles = async (roles: Role[]) => {
     if (selectedUser) {
-      setUsers(users.map(user => {
-        if (user.id === selectedUser.id) {
-          return {
-            ...user,
-            permissions
-          };
-        }
-        return user;
-      }));
-      
-      toast({
-        title: "Permissões atualizadas",
-        description: "As permissões do usuário foram atualizadas com sucesso",
-      });
+      try {
+        await userService.update(selectedUser.id, {
+          ...selectedUser,
+          roles
+        });
+
+        setUsers(users.map(user => {
+          if (user.id === selectedUser.id) {
+            return {
+              ...user,
+              roles
+            };
+          }
+          return user;
+        }));
+        
+        toast({
+          title: "Funções atualizadas",
+          description: "As funções do usuário foram atualizadas com sucesso",
+        });
+      } catch (error) {
+        console.error('Failed to update roles:', error);
+        toast({
+          title: "Erro ao atualizar funções",
+          description: "Não foi possível atualizar as funções do usuário",
+          variant: "destructive"
+        });
+      }
     }
   };
 
-  const handleUserFormSubmit = (data: UserFormValues) => {
-    if (editingUser) {
-      setUsers(users.map(user => {
-        if (user.id === editingUser.id) {
-          return {
-            ...user,
-            name: data.name,
-            email: data.email,
-            role: data.role,
-            department: data.department,
-            permission: data.permission,
-          };
-        }
-        return user;
-      }));
+  const handleUserFormSubmit = async (data: UserFormValues) => {
+    try {
+      if (editingUser) {
+        const updatedUser = await userService.update(editingUser.id, {
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          department: data.department,
+          permission: data.permission,
+        });
+        
+        // Map response data for display
+        const mappedUser = {
+          ...updatedUser,
+          role: updatedUser.cargo || updatedUser.role,
+          lastAccess: updatedUser.updatedAt ? new Date(updatedUser.updatedAt).toLocaleDateString('pt-BR') : 'Não disponível'
+        };
+        
+        setUsers(users.map(user => {
+          if (user.id === editingUser.id) {
+            return mappedUser;
+          }
+          return user;
+        }));
+        
+        toast({
+          title: "Usuário atualizado",
+          description: "As informações do usuário foram atualizadas com sucesso",
+        });
+      } else {
+        const newUser = await userService.create({
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          department: data.department,
+          permission: data.permission,
+        });
+        
+        // Map response data for display
+        const mappedUser = {
+          ...newUser,
+          role: newUser.cargo || newUser.role,
+          lastAccess: newUser.updatedAt ? new Date(newUser.updatedAt).toLocaleDateString('pt-BR') : 'Não disponível'
+        };
+        
+        setUsers([...users, mappedUser]);
+        
+        toast({
+          title: "Usuário adicionado",
+          description: "Novo usuário foi adicionado com sucesso",
+        });
+      }
+      setOpenDialog(false);
+    } catch (error) {
+      console.error('Failed to save user:', error);
       toast({
-        title: "Usuário atualizado",
-        description: "As informações do usuário foram atualizadas com sucesso",
-      });
-    } else {
-      const newUser: UserData = {
-        id: (users.length + 1).toString(),
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        department: data.department,
-        permission: data.permission,
-        lastAccess: 'Nunca acessou',
-        permissions: [
-          { module: 'USUARIO', read: false, write: false },
-          { module: 'ARMAZEM', read: false, write: false },
-          { module: 'INVENTARIO', read: false, write: false },
-          { module: 'RELATORIO', read: false, write: false }
-        ]
-      };
-      setUsers([...users, newUser]);
-      toast({
-        title: "Usuário adicionado",
-        description: "Novo usuário foi adicionado com sucesso",
+        title: "Erro ao salvar usuário",
+        description: "Não foi possível salvar as informações do usuário",
+        variant: "destructive"
       });
     }
-    setOpenDialog(false);
   };
 
   return (
@@ -225,6 +219,7 @@ const Users = () => {
                 onEdit={handleEditUser}
                 onDelete={handleDeleteUser}
                 onManagePermissions={handleOpenPermissions}
+                isLoading={isLoading}
               />
             </div>
           </motion.div>
@@ -245,8 +240,8 @@ const Users = () => {
           open={permissionsModalOpen}
           onOpenChange={setPermissionsModalOpen}
           userName={selectedUser.name}
-          initialPermissions={selectedUser.permissions}
-          onSave={handleSavePermissions}
+          initialRoles={selectedUser.roles}
+          onSave={handleSaveRoles}
         />
       )}
     </AuthRequired>

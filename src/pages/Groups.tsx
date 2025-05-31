@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import React from 'react';
 import AuthRequired from '../components/AuthRequired';
 import Sidebar from '../components/Sidebar';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { motion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,8 +24,7 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogDescription,
-  DialogFooter
+  DialogDescription
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -51,7 +49,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Group } from '@/services/groups';
+import { useGroups } from '@/hooks/useGroups';
+import GroupsTableSkeleton from '@/components/groups/GroupsTableSkeleton';
 
 const groupFormSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter pelo menos 2 caracteres' }),
@@ -63,96 +63,16 @@ const groupFormSchema = z.object({
 
 type GroupFormValues = z.infer<typeof groupFormSchema>;
 
-interface Group {
-  id: string;
-  name: string;
-  code: string;
-  description: string;
-  parentId?: string;
-  zoneId?: string;
-  itemCount: number;
-  children?: Group[];
-}
-
 interface Zone {
   id: string;
   name: string;
 }
 
-// Mock zones data
+// Mock zones data - this should be replaced with a real API later
 const zones: Zone[] = [
   { id: '1', name: 'Zona A - Recebimento' },
   { id: '2', name: 'Zona B - Expedição' },
   { id: '3', name: 'Zona C - Estoque' },
-];
-
-// Mock initial data
-const initialGroups: Group[] = [
-  {
-    id: '1',
-    name: 'Eletrônicos',
-    code: 'ELE',
-    description: 'Produtos eletrônicos como computadores, celulares e acessórios',
-    itemCount: 38,
-    children: [
-      {
-        id: '1.1',
-        name: 'Computadores',
-        code: 'ELE-COMP',
-        description: 'Desktops e laptops',
-        parentId: '1',
-        itemCount: 15,
-      },
-      {
-        id: '1.2',
-        name: 'Celulares',
-        code: 'ELE-CEL',
-        description: 'Smartphones e acessórios',
-        parentId: '1',
-        itemCount: 23,
-      }
-    ]
-  },
-  {
-    id: '2',
-    name: 'Móveis',
-    code: 'MOV',
-    description: 'Mobiliário para escritório e residência',
-    itemCount: 24,
-  },
-  {
-    id: '3',
-    name: 'Alimentos',
-    code: 'ALI',
-    description: 'Produtos alimentícios não perecíveis',
-    itemCount: 56,
-    zoneId: '3',
-  },
-  {
-    id: '4',
-    name: 'Acessórios',
-    code: 'ACE',
-    description: 'Acessórios diversos para computadores e outros dispositivos',
-    itemCount: 42,
-    children: [
-      {
-        id: '4.1',
-        name: 'Mouses',
-        code: 'ACE-MOU',
-        description: 'Mouses e touchpads',
-        parentId: '4',
-        itemCount: 18,
-      },
-      {
-        id: '4.2',
-        name: 'Teclados',
-        code: 'ACE-TEC',
-        description: 'Teclados mecânicos e de membrana',
-        parentId: '4',
-        itemCount: 24,
-      }
-    ]
-  },
 ];
 
 // Helper function to get all groups in flat format
@@ -170,12 +90,23 @@ const getAllGroups = (groups: Group[]): Group[] => {
 };
 
 const Groups = () => {
-  const [groups, setGroups] = useState<Group[]>(initialGroups);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [editingGroup, setEditingGroup] = useState<Group | null>(null);
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-  const { toast } = useToast();
+  const {
+    groups,
+    filteredGroups,
+    isLoading,
+    searchTerm,
+    setSearchTerm,
+    openDialog,
+    setOpenDialog,
+    editingGroup,
+    expandedGroups,
+    handleAddGroup,
+    handleEditGroup,
+    handleDeleteGroup,
+    toggleExpanded,
+    onSubmitGroup
+  } = useGroups();
+
   const isMobile = useIsMobile();
 
   const form = useForm<GroupFormValues>({
@@ -189,142 +120,26 @@ const Groups = () => {
     },
   });
 
-  const onSubmit = (data: GroupFormValues) => {
+  // Update form when editing group changes
+  React.useEffect(() => {
     if (editingGroup) {
-      // Update existing group
-      const updateNestedGroups = (groupsList: Group[]): Group[] => {
-        return groupsList.map(group => {
-          if (group.id === editingGroup.id) {
-            return {
-              ...group,
-              name: data.name,
-              code: data.code,
-              description: data.description || '',
-              parentId: data.parentId === 'none' ? undefined : data.parentId,
-              zoneId: data.zoneId === 'none' ? undefined : data.zoneId,
-            };
-          } else if (group.children) {
-            return {
-              ...group,
-              children: updateNestedGroups(group.children),
-            };
-          }
-          return group;
-        });
-      };
-
-      setGroups(updateNestedGroups(groups));
-
-      toast({
-        title: "Categoria atualizada",
-        description: "As informações da categoria foram atualizadas com sucesso",
+      form.reset({
+        name: editingGroup.name,
+        code: editingGroup.code,
+        description: editingGroup.description,
+        parentId: editingGroup.parentId || 'none',
+        zoneId: editingGroup.zoneId || 'none',
       });
     } else {
-      // Add new group
-      const newGroup: Group = {
-        id: Date.now().toString(),
-        name: data.name,
-        code: data.code,
-        description: data.description || '',
-        parentId: data.parentId === 'none' ? undefined : data.parentId,
-        zoneId: data.zoneId === 'none' ? undefined : data.zoneId,
-        itemCount: 0,
-      };
-
-      if (data.parentId && data.parentId !== 'none') {
-        // If parent is specified, add to children
-        const updateParentWithNewChild = (groupsList: Group[]): Group[] => {
-          return groupsList.map(group => {
-            if (group.id === data.parentId) {
-              return {
-                ...group,
-                children: [...(group.children || []), newGroup]
-              };
-            } else if (group.children) {
-              return {
-                ...group,
-                children: updateParentWithNewChild(group.children)
-              };
-            }
-            return group;
-          });
-        };
-
-        setGroups(updateParentWithNewChild(groups));
-      } else {
-        // Add as top-level group
-        setGroups([...groups, newGroup]);
-      }
-
-      toast({
-        title: "Categoria adicionada",
-        description: "Nova categoria foi adicionada com sucesso",
+      form.reset({
+        name: '',
+        code: '',
+        description: '',
+        parentId: 'none',
+        zoneId: 'none',
       });
     }
-
-    setOpenDialog(false);
-    form.reset();
-  };
-
-  const handleAddGroup = () => {
-    setEditingGroup(null);
-    form.reset({
-      name: '',
-      code: '',
-      description: '',
-      parentId: 'none',
-      zoneId: 'none',
-    });
-    setOpenDialog(true);
-  };
-
-  const handleEditGroup = (group: Group) => {
-    setEditingGroup(group);
-    form.reset({
-      name: group.name,
-      code: group.code,
-      description: group.description,
-      parentId: group.parentId || 'none',
-      zoneId: group.zoneId || 'none',
-    });
-    setOpenDialog(true);
-  };
-
-  const handleDeleteGroup = (groupId: string) => {
-    // Remove the group (and children) from the array
-    const removeGroup = (groupsList: Group[]): Group[] => {
-      return groupsList.filter(group => {
-        if (group.id === groupId) {
-          return false;
-        } else if (group.children) {
-          group.children = removeGroup(group.children);
-        }
-        return true;
-      });
-    };
-
-    setGroups(removeGroup(groups));
-    
-    toast({
-      title: "Categoria excluída",
-      description: "A categoria foi removida com sucesso",
-    });
-  };
-
-  const toggleExpanded = (groupId: string) => {
-    setExpandedGroups(prev => ({
-      ...prev,
-      [groupId]: !prev[groupId]
-    }));
-  };
-
-  const filteredGroups = searchTerm.length > 0 
-    ? getAllGroups(groups).filter(group => 
-        group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        group.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        group.description.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : groups;
+  }, [editingGroup, form]);
 
   const getZoneName = (zoneId?: string) => {
     if (!zoneId) return '-';
@@ -333,10 +148,9 @@ const Groups = () => {
   };
 
   // Recursive component for tree view
-  const GroupRow = ({ group, level = 0, handleEditGroup, handleDeleteGroup, expandedGroups, toggleExpanded }) => {
+  const GroupRow = ({ group, level = 0 }) => {
     const hasChildren = group.children && group.children.length > 0;
     const isExpanded = expandedGroups[group.id] || false;
-    const isMobile = useIsMobile();
     
     return (
       <>
@@ -366,13 +180,14 @@ const Groups = () => {
           <TableCell>{getZoneName(group.zoneId)}</TableCell>
           <TableCell>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              {group.itemCount}
+              {group.itemCount || 0}
             </span>
           </TableCell>
           <TableCell className="text-right">
             <div className="flex justify-end space-x-2">
               <Button 
-                variant="icon" 
+                variant="ghost" 
+                size="sm"
                 onClick={() => handleEditGroup(group)}
                 className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
                 title="Editar"
@@ -380,7 +195,8 @@ const Groups = () => {
                 <Edit className="h-4 w-4" />
               </Button>
               <Button 
-                variant="icon"
+                variant="ghost"
+                size="sm"
                 onClick={() => handleDeleteGroup(group.id)}
                 className="text-red-500 hover:text-red-600 hover:bg-red-50"
                 title="Excluir"
@@ -397,10 +213,6 @@ const Groups = () => {
                 key={childGroup.id} 
                 group={childGroup} 
                 level={level + 1} 
-                handleEditGroup={handleEditGroup}
-                handleDeleteGroup={handleDeleteGroup}
-                expandedGroups={expandedGroups}
-                toggleExpanded={toggleExpanded}
               />
             ))}
           </>
@@ -408,6 +220,24 @@ const Groups = () => {
       </>
     );
   };
+
+  if (isLoading) {
+    return (
+      <AuthRequired>
+        <div className="min-h-screen flex flex-col">
+          <Sidebar />
+          <ResponsiveContainer>
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Carregando categorias...</p>
+              </div>
+            </div>
+          </ResponsiveContainer>
+        </div>
+      </AuthRequired>
+    );
+  }
 
   return (
     <AuthRequired>
@@ -474,13 +304,14 @@ const Groups = () => {
                           <TableCell>{getZoneName(group.zoneId)}</TableCell>
                           <TableCell>
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {group.itemCount}
+                              {group.itemCount || 0}
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end space-x-2">
                               <Button 
-                                variant="icon"
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => handleEditGroup(group)}
                                 className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
                                 title="Editar"
@@ -488,7 +319,8 @@ const Groups = () => {
                                 <Edit className="h-4 w-4" />
                               </Button>
                               <Button 
-                                variant="icon"
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => handleDeleteGroup(group.id)}
                                 className="text-red-500 hover:text-red-600 hover:bg-red-50"
                                 title="Excluir"
@@ -502,14 +334,7 @@ const Groups = () => {
                     ) : (
                       // Tree view for normal display
                       groups.map((group) => (
-                        <GroupRow 
-                          key={group.id} 
-                          group={group} 
-                          handleEditGroup={handleEditGroup} 
-                          handleDeleteGroup={handleDeleteGroup}
-                          expandedGroups={expandedGroups}
-                          toggleExpanded={toggleExpanded}
-                        />
+                        <GroupRow key={group.id} group={group} />
                       ))
                     )}
                     {filteredGroups.length === 0 && (
@@ -547,7 +372,7 @@ const Groups = () => {
           </DialogHeader>
           
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmitGroup)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -605,7 +430,7 @@ const Groups = () => {
                       <FormLabel>Categoria Pai</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
-                        defaultValue={field.value}
+                        value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -615,7 +440,7 @@ const Groups = () => {
                         <SelectContent>
                           <SelectItem value="none">Nenhuma (categoria principal)</SelectItem>
                           {getAllGroups(groups)
-                            .filter(g => g.id !== editingGroup?.id) // Can't make itself its own parent
+                            .filter(g => g.id !== editingGroup?.id)
                             .map((group) => (
                               <SelectItem key={group.id} value={group.id}>
                                 {group.name} ({group.code})
@@ -636,7 +461,7 @@ const Groups = () => {
                       <FormLabel>Zona</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
-                        defaultValue={field.value}
+                        value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>

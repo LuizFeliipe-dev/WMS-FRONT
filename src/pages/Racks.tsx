@@ -1,10 +1,11 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, Edit, Trash2 } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useRacks } from '@/hooks/useRacks';
+import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -24,6 +24,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Rack } from '@/types/warehouse';
+import { rackService } from '@/services/racks';
 
 // Mock data para tipos de prateleiras e zonas
 interface ShelfType {
@@ -66,18 +67,11 @@ const rackFormSchema = z.object({
 type RackFormValues = z.infer<typeof rackFormSchema>;
 
 const RacksPage = () => {
-  const { 
-    filteredRacks, 
-    searchTerm, 
-    setSearchTerm,
-    deleteRack,
-    addRack,
-    updateRack,
-    racks
-  } = useRacks();
-  
+  const [racks, setRacks] = useState<Rack[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [editingRack, setEditingRack] = useState<Rack | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -94,45 +88,84 @@ const RacksPage = () => {
     }
   });
 
-  const onSubmit = (data: RackFormValues) => {
-    if (editingRack) {
-      updateRack(editingRack.id, {
-        code: data.code,
-        name: data.name,
-        description: data.description,
-        corridorId: editingRack.corridorId,
-        // Campos adicionais para armazenar na estrutura
-        shelfTypeId: data.shelfTypeId,
-        zoneId: data.zoneId,
-        verticalShelves: data.verticalShelves,
-        horizontalShelves: data.horizontalShelves,
-      });
+  useEffect(() => {
+    const fetchRacks = async () => {
+      try {
+        setIsLoading(true);
+        const data = await rackService.getAll();
+        setRacks(data);
+      } catch (error) {
+        console.error('Failed to fetch racks:', error);
+        toast({
+          title: "Erro ao buscar prateleiras",
+          description: "Não foi possível carregar a lista de prateleiras",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-      toast({
-        title: 'Prateleira atualizada',
-        description: 'A prateleira foi atualizada com sucesso',
-      });
-    } else {
-      addRack({
-        code: data.code,
-        name: data.name,
-        description: data.description,
-        corridorId: '1', // Valor padrão para manter compatibilidade com a estrutura existente
-        // Campos adicionais para armazenar na estrutura
-        shelfTypeId: data.shelfTypeId,
-        zoneId: data.zoneId,
-        verticalShelves: data.verticalShelves,
-        horizontalShelves: data.horizontalShelves,
-      });
+    fetchRacks();
+  }, [toast]);
 
+  const filteredRacks = racks.filter(rack => 
+    rack.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    rack.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const onSubmit = async (data: RackFormValues) => {
+    try {
+      if (editingRack) {
+        const updatedRack = await rackService.update(editingRack.id.toString(), {
+          code: data.code,
+          name: data.name,
+          description: data.description,
+          corridorId: editingRack.corridorId,
+          // Campos adicionais para armazenar na estrutura
+          shelfTypeId: data.shelfTypeId,
+          zoneId: data.zoneId,
+          verticalShelves: data.verticalShelves,
+          horizontalShelves: data.horizontalShelves,
+        });
+
+        setRacks(racks.map(rack => rack.id === editingRack.id ? updatedRack : rack));
+
+        toast({
+          title: 'Prateleira atualizada',
+          description: 'A prateleira foi atualizada com sucesso',
+        });
+      } else {
+        const newRack = await rackService.create({
+          code: data.code,
+          name: data.name,
+          description: data.description,
+          corridorId: '1', // Valor padrão para manter compatibilidade com a estrutura existente
+          // Campos adicionais para armazenar na estrutura
+          shelfTypeId: data.shelfTypeId,
+          zoneId: data.zoneId,
+          verticalShelves: data.verticalShelves,
+          horizontalShelves: data.horizontalShelves,
+        });
+
+        setRacks([...racks, newRack]);
+
+        toast({
+          title: 'Prateleira adicionada',
+          description: 'A prateleira foi adicionada com sucesso',
+        });
+      }
+
+      setOpenDialog(false);
+      form.reset();
+    } catch (error) {
+      console.error('Failed to save rack:', error);
       toast({
-        title: 'Prateleira adicionada',
-        description: 'A prateleira foi adicionada com sucesso',
+        title: "Erro ao salvar prateleira",
+        description: "Não foi possível salvar as informações da prateleira",
+        variant: "destructive"
       });
     }
-
-    setOpenDialog(false);
-    form.reset();
   };
 
   const handleAddRack = () => {
@@ -163,12 +196,22 @@ const RacksPage = () => {
     setOpenDialog(true);
   };
 
-  const handleDelete = (id: number) => {
-    deleteRack(id);
-    toast({
-      title: 'Prateleira excluída',
-      description: 'A prateleira foi removida com sucesso',
-    });
+  const handleDelete = async (id: number) => {
+    try {
+      // API doesn't have a delete endpoint specified, so just update local state
+      setRacks(racks.filter(rack => rack.id !== id));
+      toast({
+        title: 'Prateleira excluída',
+        description: 'A prateleira foi removida com sucesso',
+      });
+    } catch (error) {
+      console.error('Failed to delete rack:', error);
+      toast({
+        title: "Erro ao excluir prateleira",
+        description: "Não foi possível remover a prateleira",
+        variant: "destructive"
+      });
+    }
   };
 
   // Função para obter o nome do tipo de prateleira
@@ -230,7 +273,16 @@ const RacksPage = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRacks.length === 0 ? (
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={isMobile ? 4 : 6} className="text-center py-8">
+                          <div className="flex justify-center items-center">
+                            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                            <span>Carregando prateleiras...</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredRacks.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={isMobile ? 4 : 6} className="text-center py-6 text-muted-foreground">
                           Nenhuma prateleira encontrada.

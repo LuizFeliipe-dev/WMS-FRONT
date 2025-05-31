@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -16,6 +15,7 @@ import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useBalance } from '@/hooks/useBalance';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -54,7 +54,9 @@ const Balance = () => {
     recentTransactions, 
     topValueItems,
     warehouseData,
-    warehouses 
+    warehouses,
+    isLoading,
+    error
   } = useBalance();
   
   const isMobile = useIsMobile();
@@ -65,6 +67,10 @@ const Balance = () => {
   const filteredWarehouseData = warehouseFilter === 'all' 
     ? warehouseData 
     : warehouseData.filter(item => item.warehouseId === warehouseFilter);
+
+  if (error) {
+    console.error('Error loading balance data:', error);
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -100,7 +106,11 @@ const Balance = () => {
                 <CardDescription>Saldo Total em Estoque</CardDescription>
                 <CardTitle className="text-2xl flex items-center">
                   <DollarSign className="mr-2 h-5 w-5 text-muted-foreground" />
-                  R$ {totalBalance.toLocaleString('pt-BR')}
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-32" />
+                  ) : (
+                    `R$ ${totalBalance.toLocaleString('pt-BR')}`
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -115,7 +125,11 @@ const Balance = () => {
                 <CardDescription>Entradas</CardDescription>
                 <CardTitle className="text-2xl flex items-center">
                   <ArrowDown className="mr-2 h-5 w-5 text-muted-foreground" />
-                  R$ {entriesTotal.toLocaleString('pt-BR')}
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-32" />
+                  ) : (
+                    `R$ ${entriesTotal.toLocaleString('pt-BR')}`
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -130,7 +144,11 @@ const Balance = () => {
                 <CardDescription>Saídas</CardDescription>
                 <CardTitle className="text-2xl flex items-center">
                   <ArrowUp className="mr-2 h-5 w-5 text-muted-foreground" />
-                  R$ {departuresTotal.toLocaleString('pt-BR')}
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-32" />
+                  ) : (
+                    `R$ ${departuresTotal.toLocaleString('pt-BR')}`
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -145,16 +163,24 @@ const Balance = () => {
                 <CardDescription>Ajustes de Estoque</CardDescription>
                 <CardTitle className="text-2xl flex items-center">
                   <AlertTriangle className="mr-2 h-5 w-5 text-muted-foreground" />
-                  {adjustmentsCount}
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-16" />
+                  ) : (
+                    adjustmentsCount
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex items-center">
                 <p className="text-xs text-muted-foreground mr-2">
                   Valor dos ajustes:
                 </p>
-                <span className="font-medium">
-                  R$ {adjustmentsValue.toLocaleString('pt-BR')}
-                </span>
+                {isLoading ? (
+                  <Skeleton className="h-4 w-20" />
+                ) : (
+                  <span className="font-medium">
+                    R$ {adjustmentsValue.toLocaleString('pt-BR')}
+                  </span>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -280,49 +306,55 @@ const Balance = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="h-[400px]">
-                <ChartContainer
-                  config={{
-                    entrada: { label: "Entrada" },
-                    saida: { label: "Saída" },
-                  }}
-                >
-                  <RechartsResponsiveContainer width="100%" height="100%">
-                    <RechartsBarChart
-                      data={filteredWarehouseData}
-                      margin={{
-                        top: 20,
-                        right: 30,
-                        left: 20,
-                        bottom: 70,
-                      }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="month" 
-                        angle={-45}
-                        textAnchor="end"
-                        height={70}
-                      />
-                      <YAxis 
-                        tickFormatter={(value) => 
-                          `R$ ${value.toLocaleString('pt-BR')}`
-                        }
-                      />
-                      <ChartTooltip 
-                        content={<ChartTooltipContent />}
-                        formatter={(value: number) => [
-                          `R$ ${value.toLocaleString('pt-BR')}`,
-                          ""
-                        ]}
-                      />
-                      <Legend />
-                      <Bar dataKey="entrada" fill="#4f46e5" name="Entrada" />
-                      <Bar dataKey="saida" fill="#f97316" name="Saída" />
-                    </RechartsBarChart>
-                  </RechartsResponsiveContainer>
-                </ChartContainer>
-              </div>
+              {isLoading ? (
+                <div className="h-[400px] flex items-center justify-center">
+                  <Skeleton className="h-[300px] w-full" />
+                </div>
+              ) : (
+                <div className="h-[400px]">
+                  <ChartContainer
+                    config={{
+                      entrada: { label: "Entrada" },
+                      saida: { label: "Saída" },
+                    }}
+                  >
+                    <RechartsResponsiveContainer width="100%" height="100%">
+                      <RechartsBarChart
+                        data={filteredWarehouseData}
+                        margin={{
+                          top: 20,
+                          right: 30,
+                          left: 20,
+                          bottom: 70,
+                        }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="month" 
+                          angle={-45}
+                          textAnchor="end"
+                          height={70}
+                        />
+                        <YAxis 
+                          tickFormatter={(value) => 
+                            `R$ ${value.toLocaleString('pt-BR')}`
+                          }
+                        />
+                        <ChartTooltip 
+                          content={<ChartTooltipContent />}
+                          formatter={(value: number) => [
+                            `R$ ${value.toLocaleString('pt-BR')}`,
+                            ""
+                          ]}
+                        />
+                        <Legend />
+                        <Bar dataKey="entrada" fill="#4f46e5" name="Entrada" />
+                        <Bar dataKey="saida" fill="#f97316" name="Saída" />
+                      </RechartsBarChart>
+                    </RechartsResponsiveContainer>
+                  </ChartContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

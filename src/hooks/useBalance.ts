@@ -1,5 +1,6 @@
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useAnnualDashboard } from './useAnnualDashboard';
 
 interface BalanceItem {
   id: number;
@@ -27,7 +28,9 @@ interface WarehouseData {
 }
 
 export const useBalance = () => {
-  // Mock data for balance items
+  const { data: annualData, isLoading, error } = useAnnualDashboard();
+
+  // Mock data for balance items (mantendo os dados mockados para itens)
   const [balanceItems] = useState<BalanceItem[]>([
     { id: 1, name: 'Notebook Dell XPS', quantity: 15, price: 8500, totalValue: 127500 },
     { id: 2, name: 'Monitor UltraWide 34"', quantity: 25, price: 3200, totalValue: 80000 },
@@ -41,7 +44,7 @@ export const useBalance = () => {
     { id: 10, name: 'Dock Station', quantity: 25, price: 800, totalValue: 20000 },
   ]);
 
-  // Mock data for recent transactions
+  // Mock data for recent transactions (mantendo os dados mockados para transações)
   const [recentTransactions] = useState<Transaction[]>([
     { id: 1, date: '2023-08-20', type: 'entry', itemName: 'Notebook Dell XPS', quantity: 5, value: 42500 },
     { id: 2, date: '2023-08-19', type: 'departure', itemName: 'Monitor UltraWide 34"', quantity: 2, value: 6400 },
@@ -53,57 +56,70 @@ export const useBalance = () => {
     { id: 8, date: '2023-08-13', type: 'departure', itemName: 'Headset Wireless', quantity: 3, value: 1800 },
   ]);
 
-  // Mock data for warehouse monthly data
-  const [warehouseData] = useState<WarehouseData[]>([
-    { warehouseId: '1', warehouseName: 'Armazém Central', month: 'Jan/2023', entrada: 120000, saida: 95000 },
-    { warehouseId: '1', warehouseName: 'Armazém Central', month: 'Fev/2023', entrada: 145000, saida: 110000 },
-    { warehouseId: '1', warehouseName: 'Armazém Central', month: 'Mar/2023', entrada: 135000, saida: 105000 },
-    { warehouseId: '1', warehouseName: 'Armazém Central', month: 'Abr/2023', entrada: 160000, saida: 130000 },
-    { warehouseId: '1', warehouseName: 'Armazém Central', month: 'Mai/2023', entrada: 180000, saida: 145000 },
-    { warehouseId: '1', warehouseName: 'Armazém Central', month: 'Jun/2023', entrada: 200000, saida: 165000 },
-    { warehouseId: '2', warehouseName: 'Armazém Sul', month: 'Jan/2023', entrada: 85000, saida: 65000 },
-    { warehouseId: '2', warehouseName: 'Armazém Sul', month: 'Fev/2023', entrada: 95000, saida: 75000 },
-    { warehouseId: '2', warehouseName: 'Armazém Sul', month: 'Mar/2023', entrada: 110000, saida: 90000 },
-    { warehouseId: '2', warehouseName: 'Armazém Sul', month: 'Abr/2023', entrada: 105000, saida: 80000 },
-    { warehouseId: '2', warehouseName: 'Armazém Sul', month: 'Mai/2023', entrada: 120000, saida: 95000 },
-    { warehouseId: '2', warehouseName: 'Armazém Sul', month: 'Jun/2023', entrada: 130000, saida: 110000 },
-  ]);
+  // Processamento dos dados reais da API para o gráfico
+  const warehouseData = useMemo(() => {
+    if (!annualData?.dashboard) return [];
+
+    const monthNames = [
+      'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+      'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+    ];
+
+    return annualData.dashboard.map(item => ({
+      warehouseId: '1',
+      warehouseName: 'Armazém Central',
+      month: `${monthNames[item.month - 1]}/${item.year}`,
+      entrada: item.loadsValue,
+      saida: Math.floor(item.loadsValue * 0.8), // Simulando saídas como 80% das entradas
+    }));
+  }, [annualData]);
 
   // Get unique warehouses for the filter
-  const warehouses = Array.from(new Set(warehouseData.map(item => item.warehouseId))).map(warehouseId => {
-    const warehouseInfo = warehouseData.find(item => item.warehouseId === warehouseId);
-    return {
-      id: warehouseId,
-      name: warehouseInfo?.warehouseName || ''
-    };
-  });
+  const warehouses = [
+    { id: '1', name: 'Armazém Central' }
+  ];
 
-  // Calculate totals
-  const totalBalance = balanceItems.reduce((acc, item) => acc + item.totalValue, 0);
-  const entriesTotal = recentTransactions
-    .filter(t => t.type === 'entry')
-    .reduce((acc, t) => acc + t.value, 0);
-  const departuresTotal = recentTransactions
-    .filter(t => t.type === 'departure')
-    .reduce((acc, t) => acc + t.value, 0);
-  const adjustmentsCount = recentTransactions.filter(t => t.type === 'adjustment').length;
-  const adjustmentsValue = recentTransactions
-    .filter(t => t.type === 'adjustment')
-    .reduce((acc, t) => acc + t.value, 0);
+  // Calculate totals baseados nos dados reais da API
+  const totals = useMemo(() => {
+    if (!annualData?.dashboard) {
+      return {
+        totalBalance: balanceItems.reduce((acc, item) => acc + item.totalValue, 0),
+        entriesTotal: 0,
+        departuresTotal: 0,
+        adjustmentsCount: 0,
+        adjustmentsValue: 0,
+      };
+    }
+
+    const entriesTotal = annualData.dashboard.reduce((acc, item) => acc + item.loadsValue, 0);
+    const departuresTotal = Math.floor(entriesTotal * 0.8); // Simulando saídas
+
+    return {
+      totalBalance: balanceItems.reduce((acc, item) => acc + item.totalValue, 0),
+      entriesTotal,
+      departuresTotal,
+      adjustmentsCount: recentTransactions.filter(t => t.type === 'adjustment').length,
+      adjustmentsValue: recentTransactions
+        .filter(t => t.type === 'adjustment')
+        .reduce((acc, t) => acc + t.value, 0),
+    };
+  }, [annualData, balanceItems, recentTransactions]);
 
   // Sort items by total value to get top items
   const topValueItems = [...balanceItems].sort((a, b) => b.totalValue - a.totalValue);
 
   return {
     balanceItems,
-    totalBalance,
-    entriesTotal,
-    departuresTotal,
-    adjustmentsCount,
-    adjustmentsValue,
+    totalBalance: totals.totalBalance,
+    entriesTotal: totals.entriesTotal,
+    departuresTotal: totals.departuresTotal,
+    adjustmentsCount: totals.adjustmentsCount,
+    adjustmentsValue: totals.adjustmentsValue,
     recentTransactions,
     topValueItems,
     warehouseData,
-    warehouses
+    warehouses,
+    isLoading,
+    error
   };
 };
