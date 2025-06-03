@@ -1,5 +1,5 @@
 
-const API_BASE_URL = 'https://33kg2j8r-3000.brs.devtunnels.ms';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 import { User } from '../types/auth';
 

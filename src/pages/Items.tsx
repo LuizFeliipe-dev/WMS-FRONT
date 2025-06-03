@@ -1,8 +1,6 @@
 
 import { useState } from 'react';
 import AuthRequired from '../components/AuthRequired';
-import Sidebar from '../components/Sidebar';
-import ResponsiveContainer from '@/components/ResponsiveContainer';
 import ItemFormDialog from '../components/items/ItemFormDialog';
 import { useItems, groups } from '../hooks/useItems';
 import ItemsPageContent from '../components/items/ItemsPageContent';
@@ -93,26 +91,21 @@ const Items = () => {
 
   return (
     <AuthRequired>
-      <div className="min-h-screen flex flex-col">
-        <Sidebar />
-        <ResponsiveContainer>
-          <ItemsPageContent
-            filteredItems={filteredItems}
-            items={items}
-            isLoading={isLoading}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            filterGroup={filterGroup}
-            setFilterGroup={setFilterGroup}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            handleAddItem={handleAddItem}
-            handleEditItem={handleEditItem}
-            handleToggleItemStatus={handleToggleItemStatus}
-            handleDeleteItem={handleDeleteItemConfirm}
-          />
-        </ResponsiveContainer>
-      </div>
+      <ItemsPageContent
+        filteredItems={filteredItems}
+        items={items}
+        isLoading={isLoading}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        filterGroup={filterGroup}
+        setFilterGroup={setFilterGroup}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        handleAddItem={handleAddItem}
+        handleEditItem={handleEditItem}
+        handleToggleItemStatus={handleToggleItemStatus}
+        handleDeleteItem={handleDeleteItemConfirm}
+      />
 
       <ItemFormDialog
         open={openDialog}

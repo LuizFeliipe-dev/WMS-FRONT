@@ -6,6 +6,8 @@ import ItemFilters from './ItemFilters';
 import ItemsTable from './ItemsTable';
 import { groups } from '@/hooks/useItems';
 import { useIsMobile } from '@/hooks/use-mobile';
+import AppLayout from '@/components/AppLayout';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
 
 interface ItemsPageContentProps {
   filteredItems: Item[];
@@ -38,38 +40,40 @@ const ItemsPageContent = ({
   handleToggleItemStatus,
   handleDeleteItem
 }: ItemsPageContentProps) => {
-  const isMobile = useIsMobile();
-  
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="page-transition"
-    >
-      <ItemsHeader onAddItem={handleAddItem} />
-      
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden mb-8">
-        <ItemFilters 
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          filterGroup={filterGroup}
-          setFilterGroup={setFilterGroup}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          groups={groups}
-        />
-        
-        <ItemsTable 
-          items={filteredItems}
-          isLoading={isLoading}
-          onEdit={handleEditItem}
-          onToggleStatus={handleToggleItemStatus}
-          onDelete={handleDeleteItem}
-          filteredCount={filteredItems.length}
-          totalCount={items.length}
-        />
-      </div>
-    </motion.div>
+    <AppLayout>
+      <ResponsiveContainer>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="page-transition"
+        >
+          <ItemsHeader onAddItem={handleAddItem} />
+          
+          <div className="bg-white rounded-xl shadow-sm border overflow-hidden mb-8">
+            <ItemFilters 
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              filterGroup={filterGroup}
+              setFilterGroup={setFilterGroup}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              groups={groups}
+            />
+            
+            <ItemsTable 
+              items={filteredItems}
+              isLoading={isLoading}
+              onEdit={handleEditItem}
+              onToggleStatus={handleToggleItemStatus}
+              onDelete={handleDeleteItem}
+              filteredCount={filteredItems.length}
+              totalCount={items.length}
+            />
+          </div>
+        </motion.div>
+      </ResponsiveContainer>
+    </AppLayout>
   );
 };
 

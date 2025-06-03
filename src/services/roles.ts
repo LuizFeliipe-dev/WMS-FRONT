@@ -1,7 +1,6 @@
-
 import { Role } from '@/types/role';
 
-const API_BASE_URL = 'https://33kg2j8r-3000.brs.devtunnels.ms';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Get auth token from localStorage
 const getAuthHeader = () => {

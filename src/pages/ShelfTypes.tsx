@@ -1,8 +1,4 @@
-
 import { useState, useEffect } from 'react';
-import AuthRequired from '../components/AuthRequired';
-import Sidebar from '../components/Sidebar';
-import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { motion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
@@ -33,6 +29,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ShelfType, shelfTypeService } from '@/services/shelfTypes';
+import AppLayout from '@/components/AppLayout';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
 
 const shelfTypeFormSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter pelo menos 2 caracteres' }),
@@ -194,121 +192,143 @@ const ShelfTypes = () => {
   );
 
   return (
-    <AuthRequired>
-      <div className="min-h-screen flex flex-col">
-        <Sidebar />
-        <ResponsiveContainer>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="page-transition"
-          >
-            <header className="flex flex-wrap gap-4 justify-between items-center mb-6">
-              <div>
-                <h1 className="text-2xl font-bold flex items-center">
-                  <Layers className="mr-3 h-6 w-6 text-primary" />
-                  Tipos de Prateleiras
-                </h1>
-                <p className="text-gray-500 mt-1">
-                  Gerencie os tipos de prateleiras utilizados nos armazéns
-                </p>
-              </div>
-              
-              <Button onClick={handleAddShelfType}>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Tipo de Prateleira
-              </Button>
-            </header>
+    <AppLayout>
+      <ResponsiveContainer>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="page-transition"
+        >
+          <header className="flex flex-wrap gap-4 justify-between items-center mb-6">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center">
+                <Layers className="mr-3 h-6 w-6 text-primary" />
+                Tipos de Prateleiras
+              </h1>
+              <p className="text-gray-500 mt-1">
+                Gerencie os tipos de prateleiras utilizados nos armazéns
+              </p>
+            </div>
             
-            <div className="bg-white rounded-xl shadow-sm border overflow-hidden mb-8">
-              <div className="p-4 border-b">
-                <div className="relative max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    placeholder="Buscar por nome..."
-                    className="pl-9"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
+            <Button onClick={handleAddShelfType}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Tipo de Prateleira
+            </Button>
+          </header>
+          
+          <div className="bg-white rounded-xl shadow-sm border overflow-hidden mb-8">
+            <div className="p-4 border-b">
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Buscar por nome..."
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
-              
-              <div className="responsive-table">
-                <Table>
-                  <TableHeader>
+            </div>
+            
+            <div className="responsive-table">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Dimensões (cm)</TableHead>
+                    <TableHead>Peso Máx. (kg)</TableHead>
+                    {!isMobile && <TableHead>Empilhável</TableHead>}
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
                     <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Dimensões (cm)</TableHead>
-                      <TableHead>Peso Máx. (kg)</TableHead>
-                      {!isMobile && <TableHead>Empilhável</TableHead>}
-                      <TableHead className="text-right">Ações</TableHead>
+                      <TableCell colSpan={isMobile ? 4 : 5} className="text-center py-6">
+                        <div className="flex justify-center items-center space-x-2">
+                          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                          <span>Carregando tipos de prateleiras...</span>
+                        </div>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={isMobile ? 4 : 5} className="text-center py-6">
-                          <div className="flex justify-center items-center space-x-2">
-                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                            <span>Carregando tipos de prateleiras...</span>
+                  ) : filteredShelfTypes.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={isMobile ? 4 : 5} className="text-center py-6 text-muted-foreground">
+                        {searchTerm ? "Nenhum tipo de prateleira encontrado com este termo." : "Nenhum tipo de prateleira cadastrado."}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredShelfTypes.map((shelfType) => (
+                      <TableRow key={shelfType.id}>
+                        <TableCell className="font-medium">{shelfType.name}</TableCell>
+                        <TableCell>{shelfType.height} × {shelfType.width} × {shelfType.depth}</TableCell>
+                        <TableCell>{shelfType.maxWeight}</TableCell>
+                        {!isMobile && (
+                          <TableCell>
+                            {shelfType.canStack ? (
+                              <span className="inline-flex items-center text-green-600">
+                                <Check className="h-4 w-4 mr-1" />
+                                Sim
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center text-red-600">
+                                <X className="h-4 w-4 mr-1" />
+                                Não
+                              </span>
+                            )}
+                          </TableCell>
+                        )}
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditShelfType(shelfType)}
+                            >
+                              <Edit className="h-4 w-4 text-blue-500" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteShelfType(shelfType)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
-                    ) : filteredShelfTypes.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={isMobile ? 4 : 5} className="text-center py-6 text-muted-foreground">
-                          {searchTerm ? "Nenhum tipo de prateleira encontrado com este termo." : "Nenhum tipo de prateleira cadastrado."}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredShelfTypes.map((shelfType) => (
-                        <TableRow key={shelfType.id}>
-                          <TableCell className="font-medium">{shelfType.name}</TableCell>
-                          <TableCell>{shelfType.height} × {shelfType.width} × {shelfType.depth}</TableCell>
-                          <TableCell>{shelfType.maxWeight}</TableCell>
-                          {!isMobile && (
-                            <TableCell>
-                              {shelfType.canStack ? (
-                                <span className="inline-flex items-center text-green-600">
-                                  <Check className="h-4 w-4 mr-1" />
-                                  Sim
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center text-red-600">
-                                  <X className="h-4 w-4 mr-1" />
-                                  Não
-                                </span>
-                              )}
-                            </TableCell>
-                          )}
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditShelfType(shelfType)}
-                              >
-                                <Edit className="h-4 w-4 text-blue-500" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteShelfType(shelfType)}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
-          </motion.div>
-        </ResponsiveContainer>
-      </div>
+          </div>
+        </motion.div>
+      </ResponsiveContainer>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Tipo de Prateleira</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir "{shelfTypeToDelete?.name}"? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex space-x-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleConfirmDelete}
+            >
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
         <DialogContent className="sm:max-w-[550px]">
@@ -449,32 +469,7 @@ const ShelfTypes = () => {
           </Form>
         </DialogContent>
       </Dialog>
-
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Excluir Tipo de Prateleira</DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja excluir "{shelfTypeToDelete?.name}"? Esta ação não pode ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex space-x-2 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              variant="destructive"
-              onClick={handleConfirmDelete}
-            >
-              Excluir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </AuthRequired>
+    </AppLayout>
   );
 };
 

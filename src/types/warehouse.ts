@@ -1,12 +1,4 @@
 
-export interface WarehouseLocation {
-  id: number;
-  code: string;
-  name: string;
-  description?: string;
-  rackId: string;
-}
-
 export interface Rack {
   id: number;
   code: string;

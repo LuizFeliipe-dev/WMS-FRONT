@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import AuthRequired from '../components/AuthRequired';
-import Sidebar from '../components/Sidebar';
+import AppLayout from '../components/AppLayout';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
@@ -192,9 +192,7 @@ const Users = () => {
 
   return (
     <AuthRequired>
-      <div className="min-h-screen flex flex-col">
-        <Sidebar />
-        
+      <AppLayout>
         <ResponsiveContainer>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -224,7 +222,7 @@ const Users = () => {
             </div>
           </motion.div>
         </ResponsiveContainer>
-      </div>
+      </AppLayout>
 
       {/* User Form Dialog */}
       <UserFormDialog

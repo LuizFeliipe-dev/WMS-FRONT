@@ -16,7 +16,7 @@ export interface AnnualDashboardData {
 }
 
 const fetchAnnualDashboardData = async (): Promise<AnnualDashboardData> => {
-  const response = await fetch('https://33kg2j8r-3000.brs.devtunnels.ms/dashboard/annual', {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/dashboard/annual`, {
     headers: {
       'Content-Type': 'application/json',
       ...getAuthHeader(),

@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { useItems } from '@/hooks/useItems';
 import { useSuppliers } from '@/hooks/useSuppliers';
-import { useLocations } from '@/hooks/useLocations';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Minus, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -25,7 +24,6 @@ interface ProductItem {
   length: number;
   maxStack: number;
   packageType: PackageType;
-  shelfId: string;
 }
 
 interface EntryModalProps {
@@ -46,14 +44,12 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
       height: 0,
       length: 0,
       maxStack: 1,
-      packageType: 'Box',
-      shelfId: ''
+      packageType: 'Box'
     }
   ]);
   const { toast } = useToast();
   const { items } = useItems();
   const { suppliers } = useSuppliers();
-  const { locations } = useLocations();
 
   const handleAddProduct = () => {
     setProducts([
@@ -66,8 +62,7 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
         height: 0,
         length: 0,
         maxStack: 1,
-        packageType: 'Box',
-        shelfId: ''
+        packageType: 'Box'
       }
     ]);
   };
@@ -100,8 +95,7 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
     const isValid = products.every(product => 
       product.itemId && product.quantity > 0 && 
       product.width > 0 && product.height > 0 && 
-      product.length > 0 && product.maxStack > 0 &&
-      product.shelfId
+      product.length > 0 && product.maxStack > 0
     );
 
     if (!isValid) {
@@ -279,29 +273,6 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
                         <SelectItem value="Box">Caixa</SelectItem>
                         <SelectItem value="Carton">Cartucho</SelectItem>
                         <SelectItem value="Pallet">Palete</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <Label htmlFor={`product-${product.id}-shelf`}>Prateleira *</Label>
-                    <Select 
-                      value={product.shelfId} 
-                      onValueChange={(value) => handleProductChange(
-                        product.id, 
-                        'shelfId', 
-                        value
-                      )}
-                    >
-                      <SelectTrigger id={`product-${product.id}-shelf`}>
-                        <SelectValue placeholder="Selecione uma prateleira" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {locations.map((location) => (
-                          <SelectItem key={location.id} value={location.id.toString()}>
-                            {location.code} - {location.name}
-                          </SelectItem>
-                        ))}
                       </SelectContent>
                     </Select>
                   </div>

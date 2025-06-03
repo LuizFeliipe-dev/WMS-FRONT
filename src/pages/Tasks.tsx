@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { useEntries, Entry } from '@/hooks/useEntries';
+import { useShelves } from '@/hooks/useShelves';
 import { motion } from 'framer-motion';
-import Sidebar from '../components/Sidebar';
+import AppLayout from '@/components/AppLayout';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import TaskItem from '@/components/dashboard/TaskItem';
 import { 
@@ -17,9 +17,11 @@ import { Separator } from '@/components/ui/separator';
 
 const Tasks = () => {
   const { entries, updateEntryStatus } = useEntries();
+  const { locations } = useShelves();
   const { toast } = useToast();
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<Entry['status'] | ''>('');
+  const [productShelves, setProductShelves] = useState<{ [key: string]: string }>({});
   
   // Filter entries that don't have "allocated" status
   const pendingEntries = entries.filter(entry => entry.status !== 'allocated');
@@ -27,15 +29,33 @@ const Tasks = () => {
   const handleOpenTaskModal = (entry: Entry) => {
     setSelectedEntry(entry);
     setSelectedStatus(entry.status);
+    // Reset product shelves for new entry
+    setProductShelves({});
   };
 
   const handleCloseModal = () => {
     setSelectedEntry(null);
     setSelectedStatus('');
+    setProductShelves({});
   };
 
   const handleSaveStatus = () => {
     if (selectedEntry && selectedStatus) {
+      // Check if all products have shelves assigned when status is "allocated"
+      if (selectedStatus === 'allocated') {
+        const allProductsHaveShelves = Object.keys(productShelves).length >= 2 && 
+          Object.values(productShelves).every(shelf => shelf !== '');
+        
+        if (!allProductsHaveShelves) {
+          toast({
+            title: "Erro",
+            description: "Por favor, selecione prateleiras para todos os produtos antes de alocar.",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+
       updateEntryStatus(selectedEntry.id, selectedStatus);
       toast({
         title: "Status atualizado",
@@ -51,9 +71,15 @@ const Tasks = () => {
     setSelectedStatus(value as Entry['status']);
   };
 
+  const handleShelfChange = (productIndex: number, shelfId: string) => {
+    setProductShelves(prev => ({
+      ...prev,
+      [productIndex]: shelfId
+    }));
+  };
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <Sidebar />
+    <AppLayout>
       <ResponsiveContainer>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -136,7 +162,7 @@ const Tasks = () => {
                   </div>
                 </div>
 
-                {/* Products Section (Similar to Entry Modal) */}
+                {/* Products Section with Shelf Selection */}
                 <Separator className="my-4" />
                 
                 <div className="space-y-2">
@@ -165,8 +191,22 @@ const Tasks = () => {
                         </div>
                         
                         <div className="space-y-1">
-                          <Label>Prateleira</Label>
-                          <div className="font-medium">A{index}01</div>
+                          <Label>Prateleira *</Label>
+                          <Select 
+                            value={productShelves[index] || ''} 
+                            onValueChange={(value) => handleShelfChange(index, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione uma prateleira" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {locations.map((location) => (
+                                <SelectItem key={location.id} value={location.id.toString()}>
+                                  {location.code} - {location.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         
                         <div className="space-y-1">
@@ -204,7 +244,7 @@ const Tasks = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </AppLayout>
   );
 };
 

@@ -1,6 +1,7 @@
+
 import React from 'react';
 import AuthRequired from '../components/AuthRequired';
-import Sidebar from '../components/Sidebar';
+import AppLayout from '@/components/AppLayout';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { motion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -224,8 +225,7 @@ const Groups = () => {
   if (isLoading) {
     return (
       <AuthRequired>
-        <div className="min-h-screen flex flex-col">
-          <Sidebar />
+        <AppLayout>
           <ResponsiveContainer>
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
@@ -234,16 +234,14 @@ const Groups = () => {
               </div>
             </div>
           </ResponsiveContainer>
-        </div>
+        </AppLayout>
       </AuthRequired>
     );
   }
 
   return (
     <AuthRequired>
-      <div className="min-h-screen flex flex-col">
-        <Sidebar />
-        
+      <AppLayout>
         <ResponsiveContainer>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -356,7 +354,7 @@ const Groups = () => {
             </div>
           </motion.div>
         </ResponsiveContainer>
-      </div>
+      </AppLayout>
       
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
         <DialogContent className="sm:max-w-[550px]">

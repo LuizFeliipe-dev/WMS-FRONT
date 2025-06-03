@@ -10,7 +10,7 @@ import {
   CalendarRange,
   Warehouse
 } from 'lucide-react';
-import Sidebar from '@/components/Sidebar';
+import AppLayout from '@/components/AppLayout';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useBalance } from '@/hooks/useBalance';
@@ -73,8 +73,7 @@ const Balance = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Sidebar />
+    <AppLayout>
       <ResponsiveContainer>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -359,7 +358,7 @@ const Balance = () => {
           </Card>
         </motion.div>
       </ResponsiveContainer>
-    </div>
+    </AppLayout>
   );
 };
 

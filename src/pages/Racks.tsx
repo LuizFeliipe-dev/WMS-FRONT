@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, Edit, Trash2, Loader2 } from 'lucide-react';
-import Sidebar from '@/components/Sidebar';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
+import AppLayout from '@/components/AppLayout';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -227,8 +226,7 @@ const RacksPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Sidebar />
+    <AppLayout>
       <ResponsiveContainer>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -481,7 +479,7 @@ const RacksPage = () => {
           </DialogContent>
         </Dialog>
       </ResponsiveContainer>
-    </div>
+    </AppLayout>
   );
 };
 

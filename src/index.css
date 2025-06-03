@@ -143,98 +143,228 @@ html {
   @apply outline-none ring-2 ring-primary/50;
 }
 
-/* Responsive layout classes */
-.responsive-container {
-  @apply px-4 md:px-6 lg:px-8 w-full;
-}
-
-.responsive-grid {
-  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4;
-}
-
-.responsive-table {
-  @apply w-full overflow-x-auto;
-}
-
-.responsive-table table {
-  @apply min-w-full;
-}
-
-/* Improved mobile experience */
+/* Mobile-first responsive design */
 @media (max-width: 768px) {
-  .hide-on-mobile {
-    display: none;
+  /* App Layout adjustments */
+  .app-layout {
+    @apply flex-col;
   }
   
-  .mobile-full-width {
-    width: 100%;
-    padding-left: 0;
-    padding-right: 0;
+  /* Header improvements */
+  .app-header {
+    @apply h-14 px-3 sticky top-0 z-50 bg-white border-b;
   }
   
-  .mobile-stack {
-    flex-direction: column;
-    gap: 1rem;
+  /* Sidebar mobile behavior */
+  .sidebar-mobile {
+    @apply fixed inset-y-0 left-0 z-40 w-64 transform -translate-x-full transition-transform;
   }
   
-  .mobile-center {
-    text-align: center;
-    justify-content: center;
+  .sidebar-mobile.open {
+    @apply translate-x-0;
   }
   
-  /* Prevent text overflow in tables */
-  td, th {
-    max-width: 250px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  /* Content area mobile spacing */
+  .content-mobile {
+    @apply px-3 py-4 pb-safe;
   }
   
-  /* Better padding for mobile forms */
-  form {
-    padding: 0.5rem;
+  /* Card improvements for mobile */
+  .card-mobile {
+    @apply rounded-lg p-4 mb-4 shadow-sm;
   }
   
-  /* Improve dialog sizing on small screens */
-  .dialog-content {
-    width: calc(100% - 2rem) !important;
-    max-width: 100% !important;
-    margin: 1rem !important;
+  /* Button improvements */
+  .btn-mobile {
+    @apply min-h-[44px] px-4 py-2 text-base font-medium;
+  }
+  
+  .btn-icon-mobile {
+    @apply w-11 h-11 p-0;
+  }
+  
+  /* Form improvements */
+  .form-mobile {
+    @apply space-y-4;
+  }
+  
+  .input-mobile {
+    @apply min-h-[44px] text-base px-4;
+  }
+  
+  .label-mobile {
+    @apply text-sm font-medium mb-2 block;
+  }
+  
+  /* Table improvements */
+  .table-mobile {
+    @apply block overflow-x-auto whitespace-nowrap;
+  }
+  
+  .table-mobile table {
+    @apply min-w-full;
+  }
+  
+  .table-mobile th,
+  .table-mobile td {
+    @apply py-3 px-3 text-sm;
+  }
+  
+  /* Grid improvements */
+  .grid-mobile {
+    @apply grid-cols-1 gap-3;
+  }
+  
+  .grid-mobile-2 {
+    @apply grid-cols-2 gap-3;
+  }
+  
+  /* Dashboard card adjustments */
+  .dashboard-card-mobile {
+    @apply p-4 rounded-lg bg-white shadow-sm border;
+  }
+  
+  /* Statistics section mobile */
+  .stats-mobile {
+    @apply grid-cols-2 gap-3 mb-4;
+  }
+  
+  /* Task section mobile */
+  .task-mobile {
+    @apply p-3 rounded-lg border bg-white mb-3;
+  }
+  
+  /* Activity section mobile */
+  .activity-mobile {
+    @apply flex items-start gap-3 p-3 rounded-lg border bg-gray-50 mb-2;
+  }
+  
+  /* Dialog/Modal improvements */
+  .dialog-mobile {
+    @apply w-[calc(100vw-24px)] max-w-none m-3 max-h-[calc(100vh-48px)] overflow-y-auto;
+  }
+  
+  /* Filters mobile */
+  .filters-mobile {
+    @apply flex-col space-y-3 p-3;
+  }
+  
+  /* Search input mobile */
+  .search-mobile {
+    @apply w-full min-h-[44px];
+  }
+  
+  /* Select dropdown mobile */
+  .select-mobile {
+    @apply min-h-[44px];
+  }
+  
+  /* Navigation improvements */
+  .nav-mobile {
+    @apply px-2 py-1;
+  }
+  
+  .nav-item-mobile {
+    @apply flex items-center px-3 py-3 rounded-lg text-sm font-medium;
+  }
+  
+  /* Typography mobile adjustments */
+  h1 {
+    @apply text-xl font-bold mb-4;
+  }
+  
+  h2 {
+    @apply text-lg font-semibold mb-3;
+  }
+  
+  h3 {
+    @apply text-base font-medium mb-2;
+  }
+  
+  /* Spacing utilities */
+  .section-mobile {
+    @apply mb-6;
+  }
+  
+  .content-spacing-mobile {
+    @apply space-y-4;
+  }
+  
+  /* Touch targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Safe area support */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  /* Improved scroll areas */
+  .scroll-mobile {
+    @apply overflow-y-auto max-h-[60vh];
+  }
+  
+  /* Better tap highlighting */
+  .tap-highlight-transparent {
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
-/* Typography responsive adjustments */
-h1, .h1 {
-  @apply text-2xl md:text-3xl font-bold;
-}
-
-h2, .h2 {
-  @apply text-xl md:text-2xl font-semibold;
-}
-
-h3, .h3 {
-  @apply text-lg md:text-xl font-medium;
-}
-
-/* Responsive table styling */
-@media (max-width: 768px) {
-  .responsive-table th,
-  .responsive-table td {
-    @apply py-2 px-3 text-sm;
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .grid-tablet {
+    @apply grid-cols-2;
   }
   
-  .responsive-table th:first-child,
-  .responsive-table td:first-child {
-    @apply sticky left-0 bg-white z-10;
+  .stats-tablet {
+    @apply grid-cols-4 gap-4;
   }
   
-  /* Improve card padding on mobile */
-  .card {
-    @apply p-3 md:p-6;
+  .content-tablet {
+    @apply px-6 py-6;
+  }
+}
+
+/* Desktop improvements */
+@media (min-width: 1025px) {
+  .hover-effects {
+    @apply hover:shadow-lg hover:-translate-y-1 transition-all duration-200;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    @apply hidden;
   }
   
-  /* Adjust button sizes on mobile */
-  .btn-responsive {
-    @apply text-sm py-1 px-3;
+  .print-full-width {
+    @apply w-full;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .dark-auto {
+    @apply bg-gray-900 text-white;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    @apply transition-none animate-none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .high-contrast {
+    @apply border-2 border-black;
   }
 }

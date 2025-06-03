@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useLocations } from '@/hooks/useLocations';
+import { useShelves } from '@/hooks/useShelves';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -19,7 +18,7 @@ const TransactionModal = ({ isOpen, onClose, orderNumber }: TransactionModalProp
   const [sourceShelf, setSourceShelf] = useState('');
   const [destinationShelf, setDestinationShelf] = useState('');
   const { toast } = useToast();
-  const { locations } = useLocations();
+  const { locations } = useShelves();
 
   // Filtra prateleiras para não mostrar a selecionada como origem nas opções de destino
   const availableDestinationShelves = locations.filter(loc => loc.id.toString() !== sourceShelf);

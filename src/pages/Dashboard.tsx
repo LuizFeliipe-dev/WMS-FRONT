@@ -1,7 +1,7 @@
 
 import { useEffect } from 'react';
 import AuthRequired from '../components/AuthRequired';
-import Sidebar from '../components/Sidebar';
+import AppLayout from '@/components/AppLayout';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { motion } from 'framer-motion';
@@ -19,9 +19,7 @@ const Dashboard = () => {
 
   return (
     <AuthRequired>
-      <div className="min-h-screen flex flex-col">
-        <Sidebar />
-        
+      <AppLayout>
         <ResponsiveContainer>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -41,7 +39,7 @@ const Dashboard = () => {
             {!isMobile && <WarehouseViewSection />}
           </motion.div>
         </ResponsiveContainer>
-      </div>
+      </AppLayout>
     </AuthRequired>
   );
 };

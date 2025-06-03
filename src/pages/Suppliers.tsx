@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import AuthRequired from '../components/AuthRequired';
-import Sidebar from '../components/Sidebar';
+import AppLayout from '@/components/AppLayout';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
@@ -229,9 +228,7 @@ const Suppliers = () => {
 
   return (
     <AuthRequired>
-      <div className="min-h-screen flex">
-        <Sidebar />
-        
+      <AppLayout>
         <ResponsiveContainer>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -355,7 +352,7 @@ const Suppliers = () => {
             </div>
           </motion.div>
         </ResponsiveContainer>
-      </div>
+      </AppLayout>
       
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
         <DialogContent className="sm:max-w-[425px]">

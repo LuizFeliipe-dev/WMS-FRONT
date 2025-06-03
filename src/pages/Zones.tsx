@@ -1,8 +1,4 @@
-
 import { useState, useEffect } from 'react';
-import AuthRequired from '../components/AuthRequired';
-import Sidebar from '../components/Sidebar';
-import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -32,6 +28,8 @@ import {
 } from "@/components/ui/table";
 import { useRacks } from '@/hooks/useRacks';
 import { roleService } from '@/services/roles';
+import AppLayout from '@/components/AppLayout';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
 
 const zoneFormSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter pelo menos 2 caracteres' }),
@@ -44,7 +42,6 @@ interface Zone {
   id: string;
   name: string;
   racks: string[];
-  permissions?: string[];
 }
 
 const Zones = () => {
@@ -75,7 +72,6 @@ const Zones = () => {
           id: role.id,
           name: role.name,
           racks: [], // This field might need a different API
-          permissions: role.permissions
         }));
         setZones(mappedZones);
       } catch (error) {
@@ -134,8 +130,6 @@ const Zones = () => {
       if (editingZone) {
         const updatedZone = await roleService.update(editingZone.id, {
           name: data.name,
-          // Map racks to permissions array if needed
-          permissions: editingZone.permissions
         });
 
         setZones(zones.map(z => {
@@ -155,8 +149,6 @@ const Zones = () => {
       } else {
         const newZone = await roleService.create({
           name: data.name,
-          // No permissions initially
-          permissions: []
         });
 
         setZones([...zones, { ...newZone, racks: data.racks }]);
@@ -187,114 +179,111 @@ const Zones = () => {
   }));
 
   return (
-    <AuthRequired>
-      <div className="min-h-screen flex flex-col">
-        <Sidebar />
-        <ResponsiveContainer>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="page-transition"
-          >
-            <header className="flex flex-wrap gap-4 justify-between items-center mb-6">
-              <div>
-                <h1 className="text-2xl font-bold flex items-center">
-                  <Target className="mr-3 h-6 w-6 text-primary" />
-                  Zonas
-                </h1>
-                <p className="text-gray-500 mt-1">
-                  Gerencie as zonas do armazém
-                </p>
-              </div>
-              
-              <Button onClick={handleAddZone}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nova Zona
-              </Button>
-            </header>
+    <AppLayout>
+      <ResponsiveContainer>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="page-transition"
+        >
+          <header className="flex flex-wrap gap-4 justify-between items-center mb-6">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center">
+                <Target className="mr-3 h-6 w-6 text-primary" />
+                Zonas
+              </h1>
+              <p className="text-gray-500 mt-1">
+                Gerencie as zonas do armazém
+              </p>
+            </div>
             
-            <div className="bg-white rounded-xl shadow-sm border overflow-hidden mb-8">
-              <div className="p-4 border-b">
-                <div className="relative max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    placeholder="Buscar por nome..."
-                    className="pl-9"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
+            <Button onClick={handleAddZone}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Zona
+            </Button>
+          </header>
+          
+          <div className="bg-white rounded-xl shadow-sm border overflow-hidden mb-8">
+            <div className="p-4 border-b">
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Buscar por nome..."
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
-              
-              <div className="responsive-table">
-                <Table>
-                  <TableHeader>
+            </div>
+            
+            <div className="responsive-table">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Racks</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
                     <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Racks</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
+                      <TableCell colSpan={3} className="text-center py-8">
+                        <div className="flex justify-center items-center">
+                          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                          <span>Carregando zonas...</span>
+                        </div>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center py-8">
-                          <div className="flex justify-center items-center">
-                            <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                            <span>Carregando zonas...</span>
+                  ) : filteredZones.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                        Nenhuma zona encontrada.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredZones.map((zone) => (
+                      <TableRow key={zone.id}>
+                        <TableCell className="font-medium">{zone.name}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {zone.racks && zone.racks.map(rackCode => (
+                              <span 
+                                key={rackCode} 
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                              >
+                                {rackCode}
+                              </span>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditZone(zone)}
+                            >
+                              <Edit className="h-4 w-4 text-blue-500" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteZone(zone.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
-                    ) : filteredZones.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
-                          Nenhuma zona encontrada.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredZones.map((zone) => (
-                        <TableRow key={zone.id}>
-                          <TableCell className="font-medium">{zone.name}</TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {zone.racks && zone.racks.map(rackCode => (
-                                <span 
-                                  key={rackCode} 
-                                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                                >
-                                  {rackCode}
-                                </span>
-                              ))}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditZone(zone)}
-                              >
-                                <Edit className="h-4 w-4 text-blue-500" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteZone(zone.id)}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
-          </motion.div>
-        </ResponsiveContainer>
-      </div>
+          </div>
+        </motion.div>
+      </ResponsiveContainer>
 
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
         <DialogContent className="sm:max-w-[500px]">
@@ -351,7 +340,7 @@ const Zones = () => {
           </Form>
         </DialogContent>
       </Dialog>
-    </AuthRequired>
+    </AppLayout>
   );
 };
 
