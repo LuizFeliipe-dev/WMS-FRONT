@@ -6,8 +6,7 @@ import Sidebar from '../components/Sidebar';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import EntrySection from '@/components/events/EntrySection';
-import InventorySection from '@/components/events/InventorySection';
-import TransactionSection from '@/components/events/TransactionSection';
+import NewTransactionSection from '@/components/events/NewTransactionSection';
 
 const Events = () => {
   return (
@@ -23,7 +22,7 @@ const Events = () => {
             <header className="mb-6 md:mb-8">
               <h1 className="text-2xl md:text-3xl font-semibold">Eventos</h1>
               <p className="text-gray-500 mt-1">
-                Gerencie entradas, inventários e transações de itens do armazém
+                Gerencie entradas e transações de itens do armazém
               </p>
             </header>
 
@@ -36,19 +35,15 @@ const Events = () => {
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="entry" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 mb-4">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
                     <TabsTrigger value="entry">Entrada</TabsTrigger>
-                    <TabsTrigger value="inventory">Inventário</TabsTrigger>
                     <TabsTrigger value="transaction">Transação</TabsTrigger>
                   </TabsList>
                   <TabsContent value="entry" className="mt-0">
                     <EntrySection />
                   </TabsContent>
-                  <TabsContent value="inventory" className="mt-0">
-                    <InventorySection />
-                  </TabsContent>
                   <TabsContent value="transaction" className="mt-0">
-                    <TransactionSection />
+                    <NewTransactionSection />
                   </TabsContent>
                 </Tabs>
               </CardContent>

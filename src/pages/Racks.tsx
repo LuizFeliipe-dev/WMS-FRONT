@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Search, Plus, Edit, Loader2, Power, PowerOff, Pencil } from 'lucide-react';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import AppLayout from '@/components/AppLayout';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useToast } from '@/hooks/use-toast';
+import { useZones } from '@/hooks/useZones';
+import { useRacksWithFilters } from '@/hooks/useRacksWithFilters';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Table,
   TableBody,
@@ -16,47 +19,27 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Rack } from '@/types/warehouse';
-import { rackService } from '@/services/racks';
-
-// Mock data para tipos de prateleiras e zonas
-interface ShelfType {
-  id: string;
-  name: string;
-  height: number;
-  width: number;
-  depth: number;
-  maxWeight: number;
-  isStackable: boolean;
-}
-
-interface Zone {
-  id: string;
-  name: string;
-}
-
-const mockShelfTypes: ShelfType[] = [
-  { id: '1', name: 'Tipo Standard', height: 200, width: 100, depth: 60, maxWeight: 500, isStackable: true },
-  { id: '2', name: 'Tipo Heavy Duty', height: 250, width: 120, depth: 80, maxWeight: 1000, isStackable: false },
-  { id: '3', name: 'Tipo Compacto', height: 150, width: 80, depth: 40, maxWeight: 300, isStackable: true },
-];
-
-const mockZones: Zone[] = [
-  { id: '1', name: 'Zona A - Recebimento' },
-  { id: '2', name: 'Zona B - Picking' },
-  { id: '3', name: 'Zona C - Expedição' },
-];
+import { shelfTypeService, ShelfType } from '@/services/shelfTypes';
+import { useToast } from '@/hooks/use-toast';
 
 const rackFormSchema = z.object({
-  code: z.string().min(1, { message: 'Código é obrigatório' }),
   name: z.string().min(1, { message: 'Nome é obrigatório' }),
-  description: z.string().optional(),
   shelfTypeId: z.string().min(1, { message: 'Selecione um tipo de prateleira' }),
   zoneId: z.string().min(1, { message: 'Selecione uma zona' }),
   verticalShelves: z.coerce.number().int().min(1, { message: 'Deve ter pelo menos 1 prateleira para cima' }),
@@ -66,20 +49,36 @@ const rackFormSchema = z.object({
 type RackFormValues = z.infer<typeof rackFormSchema>;
 
 const RacksPage = () => {
-  const [racks, setRacks] = useState<Rack[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [shelfTypes, setShelfTypes] = useState<ShelfType[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingRack, setEditingRack] = useState<Rack | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    rack: Rack | null;
+    action: 'activate' | 'inactivate';
+  }>({ open: false, rack: null, action: 'activate' });
   const isMobile = useIsMobile();
+  const { zones, isLoading: zonesLoading } = useZones();
+  const { toast } = useToast();
+
+  const {
+    racks,
+    isLoading,
+    currentPage,
+    setCurrentPage,
+    showActive,
+    setShowActive,
+    searchTerm,
+    setSearchTerm,
+    createRack,
+    updateRack,
+    toggleRackStatus
+  } = useRacksWithFilters();
 
   const form = useForm<RackFormValues>({
     resolver: zodResolver(rackFormSchema),
     defaultValues: {
-      code: '',
       name: '',
-      description: '',
       shelfTypeId: '',
       zoneId: '',
       verticalShelves: 1,
@@ -88,91 +87,44 @@ const RacksPage = () => {
   });
 
   useEffect(() => {
-    const fetchRacks = async () => {
+    const fetchShelfTypes = async () => {
       try {
-        setIsLoading(true);
-        const data = await rackService.getAll();
-        setRacks(data);
+        const shelfTypesData = await shelfTypeService.getAll();
+        setShelfTypes(shelfTypesData);
       } catch (error) {
-        console.error('Failed to fetch racks:', error);
-        toast({
-          title: "Erro ao buscar prateleiras",
-          description: "Não foi possível carregar a lista de prateleiras",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
+        console.error('Failed to fetch shelf types:', error);
       }
     };
 
-    fetchRacks();
-  }, [toast]);
-
-  const filteredRacks = racks.filter(rack => 
-    rack.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    rack.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    fetchShelfTypes();
+  }, []);
 
   const onSubmit = async (data: RackFormValues) => {
     try {
+      const requestData = {
+        shelfTypeId: data.shelfTypeId,
+        name: data.name,
+        columns: data.horizontalShelves,
+        rows: data.verticalShelves,
+      };
+
       if (editingRack) {
-        const updatedRack = await rackService.update(editingRack.id.toString(), {
-          code: data.code,
-          name: data.name,
-          description: data.description,
-          corridorId: editingRack.corridorId,
-          // Campos adicionais para armazenar na estrutura
-          shelfTypeId: data.shelfTypeId,
-          zoneId: data.zoneId,
-          verticalShelves: data.verticalShelves,
-          horizontalShelves: data.horizontalShelves,
-        });
-
-        setRacks(racks.map(rack => rack.id === editingRack.id ? updatedRack : rack));
-
-        toast({
-          title: 'Prateleira atualizada',
-          description: 'A prateleira foi atualizada com sucesso',
-        });
+        await updateRack(editingRack.id, requestData);
       } else {
-        const newRack = await rackService.create({
-          code: data.code,
-          name: data.name,
-          description: data.description,
-          corridorId: '1', // Valor padrão para manter compatibilidade com a estrutura existente
-          // Campos adicionais para armazenar na estrutura
-          shelfTypeId: data.shelfTypeId,
-          zoneId: data.zoneId,
-          verticalShelves: data.verticalShelves,
-          horizontalShelves: data.horizontalShelves,
-        });
-
-        setRacks([...racks, newRack]);
-
-        toast({
-          title: 'Prateleira adicionada',
-          description: 'A prateleira foi adicionada com sucesso',
-        });
+        await createRack(requestData);
       }
 
       setOpenDialog(false);
       form.reset();
     } catch (error) {
-      console.error('Failed to save rack:', error);
-      toast({
-        title: "Erro ao salvar prateleira",
-        description: "Não foi possível salvar as informações da prateleira",
-        variant: "destructive"
-      });
+      // Error handling is done in the hook
     }
   };
 
   const handleAddRack = () => {
     setEditingRack(null);
     form.reset({
-      code: '',
       name: '',
-      description: '',
       shelfTypeId: '',
       zoneId: '',
       verticalShelves: 1,
@@ -182,47 +134,37 @@ const RacksPage = () => {
   };
 
   const handleEditRack = (rack: Rack) => {
+    console.log('Editing rack:', rack);
     setEditingRack(rack);
     form.reset({
-      code: rack.code,
       name: rack.name,
-      description: rack.description || '',
-      shelfTypeId: rack.shelfTypeId || '',
+      shelfTypeId: rack.shelfTypeId,
       zoneId: rack.zoneId || '',
-      verticalShelves: rack.verticalShelves || 1,
-      horizontalShelves: rack.horizontalShelves || 1,
+      verticalShelves: rack.rows,
+      horizontalShelves: rack.columns,
     });
     setOpenDialog(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleToggleActive = async (rack: Rack) => {
+    setConfirmDialog({
+      open: true,
+      rack,
+      action: rack.active ? 'inactivate' : 'activate'
+    });
+  };
+
+  const confirmToggleActive = async () => {
+    const { rack, action } = confirmDialog;
+    if (!rack) return;
+
     try {
-      // API doesn't have a delete endpoint specified, so just update local state
-      setRacks(racks.filter(rack => rack.id !== id));
-      toast({
-        title: 'Prateleira excluída',
-        description: 'A prateleira foi removida com sucesso',
-      });
+      await toggleRackStatus(rack.id, rack.active);
     } catch (error) {
-      console.error('Failed to delete rack:', error);
-      toast({
-        title: "Erro ao excluir prateleira",
-        description: "Não foi possível remover a prateleira",
-        variant: "destructive"
-      });
+      // Error handling is done in the hook
+    } finally {
+      setConfirmDialog({ open: false, rack: null, action: 'activate' });
     }
-  };
-
-  // Função para obter o nome do tipo de prateleira
-  const getShelfTypeName = (typeId: string) => {
-    const shelfType = mockShelfTypes.find(type => type.id === typeId);
-    return shelfType ? shelfType.name : 'Não definido';
-  };
-
-  // Função para obter o nome da zona
-  const getZoneName = (zoneId: string) => {
-    const zone = mockZones.find(zone => zone.id === zoneId);
-    return zone ? zone.name : 'Não definido';
   };
 
   return (
@@ -234,25 +176,32 @@ const RacksPage = () => {
           className="page-transition"
         >
           <div className="flex flex-wrap gap-4 justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Racks/Prateleiras</h1>
+            <h1 className="text-2xl font-bold">Racks</h1>
             <Button onClick={handleAddRack}>
               <Plus className="h-4 w-4 mr-2" />
-              Nova Prateleira
+              Novo Rack
             </Button>
           </div>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle>Lista de Prateleiras</CardTitle>
-              <div className="flex items-center mt-2">
+              <CardTitle>Lista de Racks</CardTitle>
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center mt-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
-                    placeholder="Buscar por código ou nome..."
+                    placeholder="Buscar por nome..."
                     className="pl-8"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium">Ativos</span>
+                  <Switch
+                    checked={showActive}
+                    onCheckedChange={setShowActive}
                   />
                 </div>
               </div>
@@ -262,53 +211,66 @@ const RacksPage = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Código</TableHead>
                       <TableHead>Nome</TableHead>
-                      {!isMobile && <TableHead>Descrição</TableHead>}
-                      {!isMobile && <TableHead>Tipo</TableHead>}
-                      <TableHead>Zona</TableHead>
+                      <TableHead>Tipo de Prateleira</TableHead>
+                      <TableHead>Dimensões (cm)</TableHead>
+                      {!isMobile && <TableHead>Status</TableHead>}
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {isLoading ? (
                       <TableRow>
-                        <TableCell colSpan={isMobile ? 4 : 6} className="text-center py-8">
+                        <TableCell colSpan={isMobile ? 4 : 5} className="text-center py-8">
                           <div className="flex justify-center items-center">
                             <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                            <span>Carregando prateleiras...</span>
+                            <span>Carregando racks...</span>
                           </div>
                         </TableCell>
                       </TableRow>
-                    ) : filteredRacks.length === 0 ? (
+                    ) : racks.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={isMobile ? 4 : 6} className="text-center py-6 text-muted-foreground">
-                          Nenhuma prateleira encontrada.
+                        <TableCell colSpan={isMobile ? 4 : 5} className="text-center py-6 text-muted-foreground">
+                          Nenhum rack encontrado.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredRacks.map((rack) => (
+                      racks.map((rack) => (
                         <TableRow key={rack.id}>
-                          <TableCell className="font-medium">{rack.code}</TableCell>
-                          <TableCell>{rack.name}</TableCell>
-                          {!isMobile && <TableCell>{rack.description}</TableCell>}
-                          {!isMobile && <TableCell>{rack.shelfTypeId ? getShelfTypeName(rack.shelfTypeId) : '-'}</TableCell>}
-                          <TableCell>{rack.zoneId ? getZoneName(rack.zoneId) : '-'}</TableCell>
+                          <TableCell className="font-medium">{rack.name}</TableCell>
+                          <TableCell>{rack.shelfType?.name || 'Não definido'}</TableCell>
+                          <TableCell>{rack.columns} × {rack.rows}</TableCell>
+                          {!isMobile && (
+                            <TableCell>
+                              <Badge
+                                variant={rack.active ? "default" : "outline"}
+                                className={rack.active
+                                  ? "bg-green-100 hover:bg-green-100 text-green-800 border-green-200"
+                                  : "bg-gray-100 hover:bg-gray-100 text-gray-800 border-gray-200"}
+                              >
+                                {rack.active ? "Ativo" : "Inativo"}
+                              </Badge>
+                            </TableCell>
+                          )}
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
-                              <Button 
-                                variant="ghost" 
+                              <Button
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => handleEditRack(rack)}
                               >
-                                <Edit className="h-4 w-4 text-blue-500" />
+                                <Pencil className="h-4 w-4" />
                               </Button>
                               <Button
-                                variant="ghost" 
+                                variant="ghost"
                                 size="sm"
-                                onClick={() => handleDelete(rack.id)}
+                                onClick={() => handleToggleActive(rack)}
                               >
-                                <Trash2 className="h-4 w-4 text-red-500" />
+                                {rack.active ? (
+                                  <PowerOff className="h-4 w-4" />
+                                ) : (
+                                  <Power className="h-4 w-4" />
+                                )}
                               </Button>
                             </div>
                           </TableCell>
@@ -318,6 +280,30 @@ const RacksPage = () => {
                   </TableBody>
                 </Table>
               </div>
+
+              <div className="flex items-center justify-center py-4">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                        className={currentPage <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationLink isActive>
+                        {currentPage}
+                      </PaginationLink>
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className="cursor-pointer"
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
@@ -326,61 +312,31 @@ const RacksPage = () => {
           <DialogContent className="sm:max-w-[550px]">
             <DialogHeader>
               <DialogTitle>
-                {editingRack ? 'Editar Prateleira' : 'Adicionar Nova Prateleira'}
+                {editingRack ? 'Editar Rack' : 'Adicionar Novo Rack'}
               </DialogTitle>
               <DialogDescription>
-                {editingRack 
-                  ? 'Edite as informações da prateleira abaixo.' 
-                  : 'Preencha os campos abaixo para adicionar uma nova prateleira.'}
+                {editingRack
+                  ? 'Edite as informações do rack abaixo.'
+                  : 'Preencha os campos abaixo para adicionar um novo rack.'}
               </DialogDescription>
             </DialogHeader>
-            
+
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="code"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Código</FormLabel>
-                        <FormControl>
-                          <Input placeholder="R01" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nome da prateleira" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
                 <FormField
                   control={form.control}
-                  name="description"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Descrição</FormLabel>
+                      <FormLabel>Nome</FormLabel>
                       <FormControl>
-                        <Input placeholder="Descrição (opcional)" {...field} />
+                        <Input placeholder="Nome do rack" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -395,7 +351,7 @@ const RacksPage = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {mockShelfTypes.map((type) => (
+                            {shelfTypes.map((type) => (
                               <SelectItem key={type.id} value={type.id}>
                                 {type.name}
                               </SelectItem>
@@ -406,7 +362,7 @@ const RacksPage = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="zoneId"
@@ -420,11 +376,17 @@ const RacksPage = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {mockZones.map((zone) => (
-                              <SelectItem key={zone.id} value={zone.id}>
-                                {zone.name}
+                            {zonesLoading ? (
+                              <SelectItem value="" disabled>
+                                Carregando zonas...
                               </SelectItem>
-                            ))}
+                            ) : (
+                              zones.map((zone) => (
+                                <SelectItem key={zone.id} value={zone.id}>
+                                  {zone.name}
+                                </SelectItem>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -432,7 +394,7 @@ const RacksPage = () => {
                     )}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -450,7 +412,7 @@ const RacksPage = () => {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="horizontalShelves"
@@ -468,16 +430,34 @@ const RacksPage = () => {
                     )}
                   />
                 </div>
-                
+
                 <DialogFooter>
                   <Button type="submit">
-                    {editingRack ? 'Salvar Alterações' : 'Adicionar Prateleira'}
+                    {editingRack ? 'Salvar Alterações' : 'Adicionar Rack'}
                   </Button>
                 </DialogFooter>
               </form>
             </Form>
           </DialogContent>
         </Dialog>
+
+        {/* Confirmation Dialog */}
+        <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar ação</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja {confirmDialog.action === 'activate' ? 'ativar' : 'inativar'} o rack "{confirmDialog.rack?.name}"?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmToggleActive}>
+                {confirmDialog.action === 'activate' ? 'Ativar' : 'Inativar'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </ResponsiveContainer>
     </AppLayout>
   );

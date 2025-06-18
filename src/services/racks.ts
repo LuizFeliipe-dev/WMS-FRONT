@@ -1,18 +1,40 @@
+
+import { ApiResponse } from '@/types/pagination';
 import { Rack } from '../types/warehouse';
+import { getAuthHeader } from '@/utils/auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Get auth token from localStorage
-const getAuthHeader = () => {
-  const token = localStorage.getItem('malldre_token');
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
-};
-
 export const rackService = {
-  // Get all racks
-  getAll: async (): Promise<Rack[]> => {
+  // Get all racks with pagination and filters
+  getAll: async (params?: {
+    take?: number;
+    page?: number;
+    active?: boolean;
+    name?: string;
+  }): Promise<ApiResponse<Rack>> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/rack`, {
+      const queryParams = new URLSearchParams();
+
+      if (params?.take) {
+        queryParams.append('take', params.take.toString());
+      }
+
+      if (params?.page) {
+        queryParams.append('page', params.page.toString());
+      }
+
+      if (params?.active !== undefined) {
+        queryParams.append('active', params.active.toString());
+      }
+
+      if (params?.name && params.name.trim()) {
+        queryParams.append('name', params.name.trim());
+      }
+
+      const url = `${API_BASE_URL}/rack${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+
+      const response = await fetch(url, {
         headers: {
           ...getAuthHeader(),
           'Content-Type': 'application/json',
@@ -34,7 +56,7 @@ export const rackService = {
   // Get rack by ID
   getById: async (id: string): Promise<Rack> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/rack/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/rack?rackId=${id}`, {
         headers: {
           ...getAuthHeader(),
           'Content-Type': 'application/json',
@@ -54,7 +76,12 @@ export const rackService = {
   },
 
   // Create new rack
-  create: async (rackData: Partial<Rack>): Promise<Rack> => {
+  create: async (rackData: {
+    shelfTypeId: string;
+    name: string;
+    columns: number;
+    rows: number;
+  }): Promise<Rack> => {
     try {
       const response = await fetch(`${API_BASE_URL}/rack`, {
         method: 'POST',
@@ -78,9 +105,14 @@ export const rackService = {
   },
 
   // Update rack
-  update: async (id: string, rackData: Partial<Rack>): Promise<Rack> => {
+  update: async (id: string, rackData: {
+    shelfTypeId: string;
+    name: string;
+    columns: number;
+    rows: number;
+  }): Promise<Rack> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/rack/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/rack?rackId=${id}`, {
         method: 'PUT',
         headers: {
           ...getAuthHeader(),
@@ -97,6 +129,47 @@ export const rackService = {
       return await response.json();
     } catch (error) {
       console.error(`Error updating rack ${id}:`, error);
+      throw error;
+    }
+  },
+
+  inactivate: async (rackId: string): Promise<void> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/rack/inactivate?rackId=${rackId}`, {
+        method: 'PUT',
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Falha ao inativar prateleira');
+      }
+    } catch (error) {
+      console.error(`Error inactivating rack ${rackId}:`, error);
+      throw error;
+    }
+  },
+
+  // Reactivate rack
+  reactivate: async (rackId: string): Promise<void> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/rack/reactivate?rackId=${rackId}`, {
+        method: 'PUT',
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Falha ao reativar prateleira');
+      }
+    } catch (error) {
+      console.error(`Error reactivating rack ${rackId}:`, error);
       throw error;
     }
   },

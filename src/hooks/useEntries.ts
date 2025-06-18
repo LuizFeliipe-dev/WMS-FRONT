@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 
-// Define the entry type
+// Define the entry type (mantido para compatibilidade)
 export interface Entry {
   id: string;
   orderNumber: string;
@@ -12,7 +12,7 @@ export interface Entry {
   priority: 'Alta' | 'Média' | 'Baixa';
 }
 
-// Initial mock data for entries
+// Initial mock data for entries (mantido para compatibilidade com dashboard)
 const initialEntries: Entry[] = [
   {
     id: '1',

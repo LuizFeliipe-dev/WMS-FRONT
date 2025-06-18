@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import AuthRequired from '../components/AuthRequired';
 import AppLayout from '../components/AppLayout';
@@ -16,43 +15,72 @@ import UserSearch from '@/components/users/UserSearch';
 import UserTable from '@/components/users/UserTable';
 import UserFormDialog from '@/components/users/UserFormDialog';
 import UserPermissionsModal from '@/components/users/UserPermissionsModal';
+import { Rack } from '@/types/warehouse';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 const Users = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showActive, setShowActive] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<(UserFormValues & { id: string }) | null>(null);
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    user: UserData | null;
+    action: 'activate' | 'inactivate';
+  }>({ open: false, user: null, action: 'activate' });
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setIsLoading(true);
-        const data = await userService.getAll();
-        // Map cargo to role for backwards compatibility
-        const mappedData = data.map(user => ({
-          ...user,
-          role: user.cargo || user.role,
-          lastAccess: user.updatedAt ? new Date(user.updatedAt).toLocaleDateString('pt-BR') : 'Não disponível'
-        }));
-        setUsers(mappedData);
-      } catch (error) {
-        console.error('Failed to fetch users:', error);
-        toast({
-          title: "Erro ao buscar usuários",
-          description: "Não foi possível carregar a lista de usuários",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
 
+      const params = {
+        take: 10,
+        page: currentPage,
+        active: showActive,
+        name: searchTerm || undefined,
+      };
+
+      const res = await userService.getAll(params);
+
+      const mappedData = res.map(user => ({
+        ...user,
+        role: user.cargo || user.role,
+        lastAccess: user.updatedAt ? new Date(user.updatedAt).toLocaleDateString('pt-BR') : 'Não disponível',
+        permissions: user.permissions || [],
+        permission: user.permission || '',
+        roles: user.roles || []
+      }));
+      setUsers(mappedData);
+    } catch (error) {
+      toast({
+        title: "Erro ao buscar usuários",
+        description: "Não foi possível carregar a lista de usuários",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchUsers();
-  }, [toast]);
+  }, [currentPage, showActive, searchTerm]);
+
+  const handleShowActiveChange = (value: boolean) => {
+    setShowActive(value);
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
 
   const handleAddUser = () => {
     setEditingUser(null);
@@ -65,27 +93,51 @@ const Users = () => {
       name: user.name,
       email: user.email,
       role: user.cargo || user.role,
-      department: user.department,
-      permission: user.permission as UserPermission,
     });
     setOpenDialog(true);
   };
 
-  const handleDeleteUser = async (userId: string) => {
+  const handleToggleActive = async (user: UserData) => {
+    setConfirmDialog({
+      open: true,
+      user,
+      action: user.active ? 'inactivate' : 'activate'
+    });
+  };
+
+  const confirmToggleActive = async () => {
+    const { user, action } = confirmDialog;
+    if (!user) return;
+
     try {
-      await userService.delete(userId);
-      setUsers(users.filter(user => user.id !== userId));
-      toast({
-        title: "Usuário excluído",
-        description: "O usuário foi removido com sucesso",
-      });
+      await handleDeleteUser(user.id, user.active);
     } catch (error) {
-      console.error('Failed to delete user:', error);
+      // Error handling is done in the hook
+    } finally {
+      setConfirmDialog({ open: false, user: null, action: 'activate' });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, isActive: boolean) => {
+    try {
+      if (isActive) {
+        await userService.inactivate(userId);
+      } else {
+        await userService.reactivate(userId);
+      }
       toast({
-        title: "Erro ao excluir usuário",
-        description: "Não foi possível remover o usuário",
-        variant: "destructive"
+        title: "Sucesso",
+        description: "Status do usuário alterado com sucesso.",
       });
+
+      await fetchUsers();
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Falha ao alterar usuário do rack. Tente novamente.",
+        variant: "destructive",
+      });
+      throw error;
     }
   };
 
@@ -96,62 +148,35 @@ const Users = () => {
 
   const handleSaveRoles = async (roles: Role[]) => {
     if (selectedUser) {
-      try {
-        await userService.update(selectedUser.id, {
-          ...selectedUser,
-          roles
-        });
+      setUsers(users.map(user => {
+        if (user.id === selectedUser.id) {
+          return {
+            ...user,
+            roles
+          };
+        }
+        return user;
+      }));
 
-        setUsers(users.map(user => {
-          if (user.id === selectedUser.id) {
-            return {
-              ...user,
-              roles
-            };
-          }
-          return user;
-        }));
-        
-        toast({
-          title: "Funções atualizadas",
-          description: "As funções do usuário foram atualizadas com sucesso",
-        });
-      } catch (error) {
-        console.error('Failed to update roles:', error);
-        toast({
-          title: "Erro ao atualizar funções",
-          description: "Não foi possível atualizar as funções do usuário",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: "Funções atualizadas",
+        description: "As funções do usuário foram atualizadas com sucesso",
+      });
+
+      await fetchUsers();
     }
   };
 
-  const handleUserFormSubmit = async (data: UserFormValues) => {
+  const handleUserFormSubmit = async (data: UserFormValues & { password: string }) => {
     try {
       if (editingUser) {
         const updatedUser = await userService.update(editingUser.id, {
           name: data.name,
           email: data.email,
           role: data.role,
-          department: data.department,
-          permission: data.permission,
+          password: data.password,
         });
-        
-        // Map response data for display
-        const mappedUser = {
-          ...updatedUser,
-          role: updatedUser.cargo || updatedUser.role,
-          lastAccess: updatedUser.updatedAt ? new Date(updatedUser.updatedAt).toLocaleDateString('pt-BR') : 'Não disponível'
-        };
-        
-        setUsers(users.map(user => {
-          if (user.id === editingUser.id) {
-            return mappedUser;
-          }
-          return user;
-        }));
-        
+
         toast({
           title: "Usuário atualizado",
           description: "As informações do usuário foram atualizadas com sucesso",
@@ -161,25 +186,17 @@ const Users = () => {
           name: data.name,
           email: data.email,
           role: data.role,
-          department: data.department,
-          permission: data.permission,
+          password: data.password,
         });
-        
-        // Map response data for display
-        const mappedUser = {
-          ...newUser,
-          role: newUser.cargo || newUser.role,
-          lastAccess: newUser.updatedAt ? new Date(newUser.updatedAt).toLocaleDateString('pt-BR') : 'Não disponível'
-        };
-        
-        setUsers([...users, mappedUser]);
-        
+
         toast({
           title: "Usuário adicionado",
           description: "Novo usuário foi adicionado com sucesso",
         });
       }
       setOpenDialog(false);
+
+      await fetchUsers();
     } catch (error) {
       console.error('Failed to save user:', error);
       toast({
@@ -199,32 +216,49 @@ const Users = () => {
             animate={{ opacity: 1, y: 0 }}
             className="page-transition"
           >
-            {/* Header */}
             <UserHeader onAddUser={handleAddUser} />
-            
-            {/* Main content */}
+
             <div className="bg-white rounded-xl shadow-sm border overflow-hidden mb-8">
-              {/* Search and filters */}
-              <UserSearch 
-                searchTerm={searchTerm} 
-                onSearchChange={setSearchTerm} 
-              />
-              
-              {/* User table */}
-              <UserTable 
-                users={users}
+              <UserSearch
                 searchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                showActive={showActive}
+                onShowActiveChange={handleShowActiveChange}
+              />
+
+              <UserTable
+                users={users}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+                searchTerm={searchTerm}
+                showActive={showActive}
                 onEdit={handleEditUser}
-                onDelete={handleDeleteUser}
+                onDelete={handleToggleActive}
                 onManagePermissions={handleOpenPermissions}
                 isLoading={isLoading}
               />
+
+              <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmar ação</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja {confirmDialog.action === 'activate' ? 'ativar' : 'inativar'} o usuario "{confirmDialog.user?.name}"?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={confirmToggleActive}>
+                      {confirmDialog.action === 'activate' ? 'Ativar' : 'Inativar'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </motion.div>
         </ResponsiveContainer>
       </AppLayout>
 
-      {/* User Form Dialog */}
       <UserFormDialog
         open={openDialog}
         onOpenChange={setOpenDialog}
@@ -232,12 +266,12 @@ const Users = () => {
         onSubmit={handleUserFormSubmit}
       />
 
-      {/* Permissions Modal */}
       {selectedUser && (
         <UserPermissionsModal
           open={permissionsModalOpen}
           onOpenChange={setPermissionsModalOpen}
           userName={selectedUser.name}
+          userId={selectedUser.id}
           initialRoles={selectedUser.roles}
           onSave={handleSaveRoles}
         />

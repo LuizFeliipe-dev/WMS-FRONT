@@ -2,14 +2,21 @@
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 
 interface UserSearchProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
+  showActive: boolean;
+  onShowActiveChange: (value: boolean) => void;
 }
 
-const UserSearch = ({ searchTerm, onSearchChange }: UserSearchProps) => {
+const UserSearch = ({ 
+  searchTerm, 
+  onSearchChange, 
+  showActive, 
+  onShowActiveChange
+}: UserSearchProps) => {
   const isMobile = useIsMobile();
 
   return (
@@ -24,21 +31,13 @@ const UserSearch = ({ searchTerm, onSearchChange }: UserSearchProps) => {
             onChange={(e) => onSearchChange(e.target.value)}
           />
         </div>
-        
-        <div className={isMobile ? "w-full" : "w-[200px]"}>
-          <Select>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Todos os departamentos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os departamentos</SelectItem>
-              <SelectItem value="logistica">Logística</SelectItem>
-              <SelectItem value="operacoes">Operações</SelectItem>
-              <SelectItem value="estoque">Estoque</SelectItem>
-              <SelectItem value="expedicao">Expedição</SelectItem>
-              <SelectItem value="diretoria">Diretoria</SelectItem>
-            </SelectContent>
-          </Select>
+
+        <div className="flex items-center space-x-2">
+          <span className="text-sm font-medium">Ativos</span>
+          <Switch
+            checked={showActive}
+            onCheckedChange={onShowActiveChange}
+          />
         </div>
       </div>
     </div>

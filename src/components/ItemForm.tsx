@@ -43,7 +43,7 @@ const ItemForm = ({
     { id: 'CM', name: 'Centímetro (CM)' },
     { id: 'PC', name: 'Peça (PC)' },
     { id: 'CX', name: 'Caixa (CX)' },
-    { id: 'PCT', name: 'Pacote (PCT)' },
+    { id: 'PK', name: 'Pacote (PK)' },
   ];
 
   return (
@@ -55,7 +55,7 @@ const ItemForm = ({
           label="Nome do Item"
           placeholder="Nome do item"
         />
-        
+
         <TextAreaField
           form={form}
           name="description"
@@ -63,7 +63,7 @@ const ItemForm = ({
           placeholder="Descrição detalhada do item"
           className="min-h-[100px]"
         />
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <SelectField
             form={form}
@@ -72,27 +72,27 @@ const ItemForm = ({
             options={measurementUnits}
             placeholder="Selecione a unidade"
           />
-          
+
           <SelectField
             form={form}
             name="productGroupId"
-            label="Grupo"
+            label="Categoria"
             options={groups}
-            placeholder="Selecione um grupo"
+            placeholder="Selecione uma categoria"
           />
         </div>
-        
+
         <div className="flex items-center space-x-2 mb-4">
-          <Switch 
-            id="active" 
-            checked={form.watch("active")} 
+          <Switch
+            id="active"
+            checked={form.watch("active")}
             onCheckedChange={(checked) => form.setValue("active", checked)}
           />
           <label htmlFor="active" className="cursor-pointer">
             Item Ativo
           </label>
         </div>
-        
+
         <Button type="submit" className="w-full">
           <Save className="mr-2 h-4 w-4" />
           {initialData ? 'Salvar Alterações' : 'Cadastrar Item'}

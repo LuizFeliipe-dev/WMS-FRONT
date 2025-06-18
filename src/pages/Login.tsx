@@ -129,17 +129,6 @@ const Login = () => {
                 )}
               </Button>
             </form>
-
-            <div className="mt-6 md:mt-8 text-center text-sm text-gray-500">
-              <p>
-                Usuários para teste (senha: 123456):
-              </p>
-              <div className="mt-2 space-y-1">
-                <p>basic@malldre.com (Usuário básico)</p>
-                <p>mid@malldre.com (Intermediário)</p>
-                <p>manager@malldre.com (Gerente)</p>
-              </div>
-            </div>
           </div>
         </div>
       </motion.div>

@@ -6,4 +6,5 @@ export interface Role {
   accessLogId: string;
   createdAt: string;
   updatedAt: string;
+  writer?: boolean
 }

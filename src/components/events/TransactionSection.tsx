@@ -6,12 +6,15 @@ import { Box, TruckIcon, FileCheck, Search, ArrowLeftRight } from 'lucide-react'
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTransactions } from '@/hooks/useTransactions';
 import DepartureStepCard from './DepartureStepCard';
 import TransactionModal from './TransactionModal';
 
 const TransactionSection = () => {
   const [orderNumber, setOrderNumber] = useState('');
   const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const { transactions, isLoading } = useTransactions(currentPage, 5);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -25,8 +28,33 @@ const TransactionSection = () => {
       return;
     }
     
-    // Abrir o modal em vez de mostrar o toast
     setShowTransactionModal(true);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'in-progress':
+        return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'completed':
+        return 'text-green-600 bg-green-50 border-green-200';
+      case 'pending':
+        return 'text-amber-600 bg-amber-50 border-amber-200';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  };
+
+  const getStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'in-progress':
+        return 'Em Progresso';
+      case 'completed':
+        return 'Concluído';
+      case 'pending':
+        return 'Pendente';
+      default:
+        return status;
+    }
   };
 
   return (
@@ -98,54 +126,55 @@ const TransactionSection = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-base md:text-lg">Transações Recentes</CardTitle>
-          <CardDescription>Últimas 5 movimentações registradas no sistema</CardDescription>
+          <CardDescription>Últimas movimentações registradas no sistema</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50">
-                <tr className="border-b">
-                  <th className="text-left p-3">Ordem</th>
-                  <th className="text-left p-3">Data</th>
-                  {!isMobile && <th className="text-left p-3">Origem</th>}
-                  {!isMobile && <th className="text-left p-3">Destino</th>}
-                  <th className="text-left p-3">Itens</th>
-                  <th className="text-left p-3">Status</th>
-                  <th className="text-right p-3">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...Array(5)].map((_, index) => (
-                  <tr key={index} className="border-b">
-                    <td className="p-3">#{20000 + index}</td>
-                    <td className="p-3">{new Date(Date.now() - index * 86400000).toLocaleDateString()}</td>
-                    {!isMobile && <td className="p-3">{`A-${index + 1}-${index * 2}`}</td>}
-                    {!isMobile && <td className="p-3">{`B-${index + 2}-${index * 3}`}</td>}
-                    <td className="p-3">{3 + index} itens</td>
-                    <td className="p-3">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        index === 0 
-                          ? 'bg-blue-50 text-blue-600 border border-blue-200' 
-                          : 'bg-green-50 text-green-600 border border-green-200'
-                      }`}>
-                        {index === 0 ? 'Em Progresso' : 'Concluído'}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right">
-                      <Button variant="ghost" size="sm">Detalhes</Button>
-                    </td>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="text-gray-500">Carregando transações...</div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr className="border-b">
+                    <th className="text-left p-3">Ordem</th>
+                    <th className="text-left p-3">Data</th>
+                    {!isMobile && <th className="text-left p-3">Origem</th>}
+                    {!isMobile && <th className="text-left p-3">Destino</th>}
+                    <th className="text-left p-3">Itens</th>
+                    <th className="text-left p-3">Status</th>
+                    <th className="text-right p-3">Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {transactions.map((transaction) => (
+                    <tr key={transaction.id} className="border-b">
+                      <td className="p-3">{transaction.orderNumber}</td>
+                      <td className="p-3">{new Date(transaction.date).toLocaleDateString('pt-BR')}</td>
+                      {!isMobile && <td className="p-3">{transaction.fromLocation}</td>}
+                      {!isMobile && <td className="p-3">{transaction.toLocation}</td>}
+                      <td className="p-3">{transaction.items} itens</td>
+                      <td className="p-3">
+                        <span className={`px-2 py-1 rounded-full text-xs border ${getStatusColor(transaction.status)}`}>
+                          {getStatusDisplay(transaction.status)}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right">
+                        <Button variant="ghost" size="sm">Detalhes</Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
         <CardFooter className="border-t pt-4">
           <Button variant="outline" className={isMobile ? "w-full" : ""}>Ver Todas as Transações</Button>
         </CardFooter>
       </Card>
 
-      {/* Modal de Transação */}
       <TransactionModal 
         isOpen={showTransactionModal} 
         onClose={() => setShowTransactionModal(false)} 

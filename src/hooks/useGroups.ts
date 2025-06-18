@@ -9,22 +9,28 @@ export const useGroups = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filteredGroups, setFilteredGroups] = useState<Group[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showActive, setShowActive] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
-  // Fetch groups when component loads
+  // Fetch groups when component loads or filters change
   useEffect(() => {
     fetchGroups();
-  }, []);
+  }, [currentPage, showActive]);
 
   const fetchGroups = async () => {
     try {
       setIsLoading(true);
-      const data = await groupService.getAll();
-      setGroups(data);
-      setFilteredGroups(data);
+      const params = {
+        take: 10,
+        page: currentPage,
+        active: showActive
+      };
+      const res = await groupService.getAll(params);
+      setGroups(res);
     } catch (error) {
       console.error("Error fetching groups:", error);
       toast({
@@ -33,16 +39,16 @@ export const useGroups = () => {
         variant: "destructive",
       });
       setGroups([]);
-      setFilteredGroups([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Apply search filter
+  // Apply search filter locally
   useEffect(() => {
     let results = groups;
-    
+
+    // Apply search filter
     if (searchTerm) {
       const getAllGroups = (groups: Group[]): Group[] => {
         let allGroups: Group[] = [];
@@ -55,14 +61,12 @@ export const useGroups = () => {
         return allGroups;
       };
 
-      const allGroups = getAllGroups(groups);
-      results = allGroups.filter(group => 
-        group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        group.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        group.description.toLowerCase().includes(searchTerm.toLowerCase())
+      const allGroups = getAllGroups(results);
+      results = allGroups.filter(group =>
+        group.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     setFilteredGroups(results);
   }, [groups, searchTerm]);
 
@@ -85,6 +89,33 @@ export const useGroups = () => {
     });
   };
 
+  const handleShowActiveChange = (value: boolean) => {
+    setShowActive(value);
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
+
+  const handleToggleActiveGroup = async (group: Group) => {
+    try {
+      if (group.active) {
+        await groupService.inactivate(group.id);
+        toast({
+          title: "Categoria inativada",
+          description: "A categoria foi inativada com sucesso",
+        });
+      } else {
+        await groupService.reactivate(group.id);
+        toast({
+          title: "Categoria ativada",
+          description: "A categoria foi ativada com sucesso",
+        });
+      }
+
+      await fetchGroups();
+    } catch (error) {
+
+    }
+  };
+
   const toggleExpanded = (groupId: string) => {
     setExpandedGroups(prev => ({
       ...prev,
@@ -96,10 +127,9 @@ export const useGroups = () => {
     try {
       const groupData = {
         name: data.name,
-        code: data.code,
-        description: data.description || '',
         parentId: data.parentId === 'none' ? undefined : data.parentId,
         zoneId: data.zoneId === 'none' ? undefined : data.zoneId,
+        active: true
       };
 
       if (editingGroup) {
@@ -134,13 +164,19 @@ export const useGroups = () => {
     isLoading,
     searchTerm,
     setSearchTerm,
+    showActive,
+    setShowActive: handleShowActiveChange,
+    currentPage,
+    setCurrentPage,
     openDialog,
     setOpenDialog,
     editingGroup,
+    setEditingGroup,
     expandedGroups,
     handleAddGroup,
     handleEditGroup,
     handleDeleteGroup,
+    handleToggleActiveGroup,
     toggleExpanded,
     onSubmitGroup,
     setGroups

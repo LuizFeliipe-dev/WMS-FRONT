@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -24,12 +23,12 @@ const DashboardCard = ({
   className,
 }: DashboardCardProps) => {
   const colors = {
-    default: 'from-blue-50 to-blue-100 border-blue-200 text-blue-700',
-    blue: 'from-blue-50 to-blue-100 border-blue-200 text-blue-700',
-    green: 'from-green-50 to-green-100 border-green-200 text-green-700',
-    amber: 'from-amber-50 to-amber-100 border-amber-200 text-amber-700',
-    red: 'from-red-50 to-red-100 border-red-200 text-red-700',
-    purple: 'from-purple-50 to-purple-100 border-purple-200 text-purple-700',
+    default: 'from-slate-100 to-slate-200 border-slate-300 text-black',
+    blue: 'from-slate-100 to-slate-200 border-slate-300 text-black',
+    green: 'from-green-50 to-green-200 border-green-300 text-black',
+    amber: 'from-amber-50 to-amber-200 border-amber-300 text-black',
+    red: 'from-red-50 to-red-200 border-red-300 text-black',
+    purple: 'from-purple-50 to-purple-200 border-purple-300 text-black',
   };
 
   return (
@@ -48,15 +47,15 @@ const DashboardCard = ({
           className
         )}
       >
-        <div className="absolute top-0 right-0 p-3">{icon}</div>
+        <div className="absolute top-0 right-0 p-3 text-black">{icon}</div>
 
         <div className="mt-2">
-          <h3 className="text-sm font-medium opacity-80">{title}</h3>
+          <h3 className="text-sm font-medium text-black/80">{title}</h3>
           {value && (
-            <p className="text-2xl font-semibold mt-1">{value}</p>
+            <p className="text-2xl font-semibold mt-1 text-black">{value}</p>
           )}
           {description && (
-            <p className="text-xs mt-2 opacity-70">{description}</p>
+            <p className="text-xs mt-2 text-black/70">{description}</p>
           )}
         </div>
 

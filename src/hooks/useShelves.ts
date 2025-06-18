@@ -4,7 +4,7 @@ import { useRacks } from './useRacks';
 
 // Interface para prateleira baseada em rack
 interface Shelf {
-  id: number;
+  id: string;
   code: string;
   name: string;
   description?: string;
@@ -19,13 +19,13 @@ export const useShelves = () => {
       // Simula prateleiras baseadas nos racks
       const mockShelves: Shelf[] = racks.flatMap(rack => [
         {
-          id: rack.id * 100 + 1,
+          id: `${rack.id}_A1`,
           code: `${rack.code}-A1`,
           name: `${rack.name} - Prateleira A1`,
           description: `Prateleira superior do rack ${rack.name}`
         },
         {
-          id: rack.id * 100 + 2,
+          id: `${rack.id}_A2`,
           code: `${rack.code}-A2`,
           name: `${rack.name} - Prateleira A2`,
           description: `Prateleira inferior do rack ${rack.name}`

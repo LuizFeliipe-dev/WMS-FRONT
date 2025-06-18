@@ -1,28 +1,38 @@
 
 import { ReactNode, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { UserPermission } from '../types/auth';
 
 interface AuthRequiredProps {
   children: ReactNode;
   requiredPermission?: UserPermission;
+  requiredRoute?: string;
 }
 
 const AuthRequired = ({ 
   children, 
-  requiredPermission = 'initial' 
+  requiredPermission = 'initial',
+  requiredRoute
 }: AuthRequiredProps) => {
-  const { isAuthenticated, isLoading, hasPermission } = useAuth();
+  const { isAuthenticated, isLoading, hasPermission, hasRouteAccess } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      navigate('/login', { replace: true });
-    } else if (!isLoading && isAuthenticated && !hasPermission(requiredPermission)) {
-      navigate('/unauthorized', { replace: true });
+      navigate('/login', { replace: true, state: { from: location } });
+    } else if (!isLoading && isAuthenticated) {
+      // Check route-based permission if specified
+      if (requiredRoute && !hasRouteAccess(requiredRoute)) {
+        navigate('/unauthorized', { replace: true });
+      } 
+      // Fall back to legacy permission system
+      else if (!requiredRoute && !hasPermission(requiredPermission)) {
+        navigate('/unauthorized', { replace: true });
+      }
     }
-  }, [isAuthenticated, isLoading, hasPermission, requiredPermission, navigate]);
+  }, [isAuthenticated, isLoading, hasPermission, hasRouteAccess, requiredPermission, requiredRoute, navigate, location]);
 
   if (isLoading) {
     return (
@@ -40,7 +50,11 @@ const AuthRequired = ({
     return null; // Will redirect to login
   }
 
-  if (!hasPermission(requiredPermission)) {
+  if (requiredRoute && !hasRouteAccess(requiredRoute)) {
+    return null; // Will redirect to unauthorized
+  }
+
+  if (!requiredRoute && !hasPermission(requiredPermission)) {
     return null; // Will redirect to unauthorized
   }
 

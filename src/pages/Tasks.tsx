@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useEntries, Entry } from '@/hooks/useEntries';
-import { useShelves } from '@/hooks/useShelves';
+
+import React, { useState } from 'react';
+import { useLoads, Load } from '@/hooks/useLoads';
 import { motion } from 'framer-motion';
 import AppLayout from '@/components/AppLayout';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
-import TaskItem from '@/components/dashboard/TaskItem';
-import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter 
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -14,68 +13,78 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious
+} from '@/components/ui/pagination';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
+import { EntrySectionStatusBgEnum, EntrySectionStatusColorEnum, EntrySectionStatusEnum } from '@/types/entrySection';
 
 const Tasks = () => {
-  const { entries, updateEntryStatus } = useEntries();
-  const { locations } = useShelves();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const { loads, total, isLoading, updateLoadStatus } = useLoads(currentPage, pageSize);
   const { toast } = useToast();
-  const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<Entry['status'] | ''>('');
-  const [productShelves, setProductShelves] = useState<{ [key: string]: string }>({});
-  
-  // Filter entries that don't have "allocated" status
-  const pendingEntries = entries.filter(entry => entry.status !== 'allocated');
+  const [selectedLoad, setSelectedLoad] = useState<Load | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleOpenTaskModal = (entry: Entry) => {
-    setSelectedEntry(entry);
-    setSelectedStatus(entry.status);
-    // Reset product shelves for new entry
-    setProductShelves({});
+  const pendingTasks = loads.filter(load =>
+    load.status === 'Received' || load.status === 'Processing'
+  );
+
+  const totalPages = Math.ceil(total / pageSize);
+
+  const handleOpenTaskModal = (load: Load) => {
+    setSelectedLoad(load);
+    setSelectedStatus(load.status);
   };
 
   const handleCloseModal = () => {
-    setSelectedEntry(null);
+    setSelectedLoad(null);
     setSelectedStatus('');
-    setProductShelves({});
   };
 
-  const handleSaveStatus = () => {
-    if (selectedEntry && selectedStatus) {
-      // Check if all products have shelves assigned when status is "allocated"
-      if (selectedStatus === 'allocated') {
-        const allProductsHaveShelves = Object.keys(productShelves).length >= 2 && 
-          Object.values(productShelves).every(shelf => shelf !== '');
-        
-        if (!allProductsHaveShelves) {
-          toast({
-            title: "Erro",
-            description: "Por favor, selecione prateleiras para todos os produtos antes de alocar.",
-            variant: "destructive"
-          });
-          return;
-        }
-      }
+  const handleSaveStatus = async () => {
+    if (selectedLoad && selectedStatus) {
+      try {
+        setIsUpdating(true);
+        await updateLoadStatus(selectedLoad.id, selectedStatus);
 
-      updateEntryStatus(selectedEntry.id, selectedStatus);
-      toast({
-        title: "Status atualizado",
-        description: `O status da entrada #${selectedEntry.orderNumber} foi atualizado com sucesso.`
-      });
-      handleCloseModal();
+        toast({
+          title: "Status atualizado",
+          description: `O status da carga ${selectedLoad.documentNumber} foi atualizado com sucesso.`
+        });
+
+        handleCloseModal();
+      } catch (error) {
+        console.error('Error updating load status:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao atualizar o status da carga. Tente novamente.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsUpdating(false);
+      }
     }
   };
 
-  // Create a handler that explicitly handles the type conversion
   const handleStatusChange = (value: string) => {
-    // Explicitly cast the value to the Entry['status'] type
-    setSelectedStatus(value as Entry['status']);
-  };
-
-  const handleShelfChange = (productIndex: number, shelfId: string) => {
-    setProductShelves(prev => ({
-      ...prev,
-      [productIndex]: shelfId
-    }));
+    setSelectedStatus(value);
   };
 
   return (
@@ -89,145 +98,226 @@ const Tasks = () => {
           <header className="mb-6 md:mb-8">
             <h1 className="text-2xl md:text-3xl font-semibold">Tarefas Pendentes</h1>
             <p className="text-gray-500 mt-1">
-              Gerencie suas tarefas pendentes no sistema
+              Gerencie as tarefas pendentes (Recebido e Processando) no sistema
             </p>
           </header>
 
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <div className="space-y-3">
-              {pendingEntries.length > 0 ? (
-                pendingEntries.map(entry => (
-                  <TaskItem 
-                    key={entry.id}
-                    title={`Entrada de mercadorias - Pedido #${entry.orderNumber}`}
-                    dueDate={entry.date}
-                    status={entry.status}
-                    to={`/entry?order=${entry.orderNumber}`}
-                    onClick={() => handleOpenTaskModal(entry)}
-                  />
-                ))
-              ) : (
-                <div className="text-gray-500 py-6 text-center">
-                  Não há tarefas pendentes no momento
+          <Card>
+            <CardHeader>
+              <CardTitle>Lista de Tarefas Pendentes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="text-gray-500">Carregando tarefas...</div>
                 </div>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Documento</TableHead>
+                        <TableHead>Valor</TableHead>
+                        <TableHead>Pacotes</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingTasks.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                            Não há tarefas pendentes (Recebido/Processando) no momento.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        pendingTasks.map((load) => (
+                          <TableRow key={load.id}>
+                            <TableCell className="font-medium">
+                              {load.documentNumber}
+                            </TableCell>
+                            <TableCell>
+                              R$ {load.value.toLocaleString('pt-BR')}
+                            </TableCell>
+                            <TableCell>
+                              {load.package.length} {load.package.length === 1 ? 'pacote' : 'pacotes'}
+                            </TableCell>
+                            <TableCell>
+                              <span className='px-2 py-1 rounded-full text-xs bg-green-50 border' style={{ color: EntrySectionStatusColorEnum[load.status], borderColor: EntrySectionStatusBgEnum[load.status] }}>
+                                {EntrySectionStatusEnum[load.status]}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              {new Date(load.createdAt).toLocaleDateString('pt-BR')}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleOpenTaskModal(load)}
+                              >
+                                Detalhes
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+
+                  {/* Paginação */}
+                  {totalPages > 1 && (
+                    <div className="mt-6">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (currentPage > 1) {
+                                  setCurrentPage(currentPage - 1);
+                                }
+                              }}
+                              className={currentPage <= 1 ? 'pointer-events-none opacity-50' : ''}
+                            />
+                          </PaginationItem>
+
+                          {[...Array(totalPages)].map((_, index) => {
+                            const page = index + 1;
+                            return (
+                              <PaginationItem key={page}>
+                                <PaginationLink
+                                  href="#"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setCurrentPage(page);
+                                  }}
+                                  isActive={page === currentPage}
+                                >
+                                  {page}
+                                </PaginationLink>
+                              </PaginationItem>
+                            );
+                          })}
+
+                          <PaginationItem>
+                            <PaginationNext
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (currentPage < totalPages) {
+                                  setCurrentPage(currentPage + 1);
+                                }
+                              }}
+                              className={currentPage >= totalPages ? 'pointer-events-none opacity-50' : ''}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
+                </>
               )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </motion.div>
       </ResponsiveContainer>
 
-      {/* Enhanced Task Detail Modal */}
-      <Dialog open={!!selectedEntry} onOpenChange={() => handleCloseModal()}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+      {/* Modal de detalhes da carga */}
+      <Dialog open={!!selectedLoad} onOpenChange={() => handleCloseModal()}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Detalhes da Tarefa</DialogTitle>
           </DialogHeader>
-          
+
           <ScrollArea className="flex-grow pr-4 max-h-[calc(80vh-120px)] overflow-y-auto">
-            {selectedEntry && (
+            {selectedLoad && (
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-1">
-                    <Label>Pedido</Label>
-                    <div className="font-medium">#{selectedEntry.orderNumber}</div>
+                    <Label>Documento</Label>
+                    <div className="font-medium">{selectedLoad.documentNumber}</div>
                   </div>
-                  
+
                   <div className="space-y-1">
-                    <Label>Fornecedor</Label>
-                    <div className="font-medium">{selectedEntry.supplier}</div>
+                    <Label>Valor</Label>
+                    <div className="font-medium">R$ {selectedLoad.value.toLocaleString('pt-BR')}</div>
                   </div>
-                  
-                  <div className="space-y-1">
-                    <Label>Itens</Label>
-                    <div className="font-medium">{selectedEntry.items}</div>
-                  </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="status">Status</Label>
-                    <Select 
-                      value={selectedStatus} 
+                    <Select
+                      value={selectedStatus}
                       onValueChange={handleStatusChange}
                     >
                       <SelectTrigger id="status">
                         <SelectValue placeholder="Selecione um status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="received">Recebido</SelectItem>
-                        <SelectItem value="inspection">Inspeção</SelectItem>
-                        <SelectItem value="awaiting storage">Aguardando Armazenamento</SelectItem>
-                        <SelectItem value="in storage process">Em Processo de Armazenamento</SelectItem>
-                        <SelectItem value="allocated">Alocado</SelectItem>
+                        <SelectItem value="Received">Recebido</SelectItem>
+                        <SelectItem value="Processing">Processando</SelectItem>
+                        <SelectItem value="Pending">Pendente</SelectItem>
+                        <SelectItem value="Allocated">Alocado</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
-                {/* Products Section with Shelf Selection */}
+                {/* Seção de Pacotes */}
                 <Separator className="my-4" />
-                
+
                 <div className="space-y-2">
-                  <h3 className="font-medium text-sm">Produtos</h3>
-                  
+                  <h3 className="font-medium text-sm">Pacotes ({selectedLoad.package.length})</h3>
+
                   <div className="space-y-4">
-                    {/* Mock product data - these would come from the Entry data in a real system */}
-                    {[1, 2].map((index) => (
-                      <div 
-                        key={index} 
+                    {selectedLoad.package.map((pkg, index) => (
+                      <div
+                        key={pkg.id}
                         className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 border rounded-md"
                       >
                         <div className="space-y-1">
-                          <Label>Item</Label>
-                          <div className="font-medium">Produto {index}</div>
+                          <Label>Produto</Label>
+                          <div className="font-medium">{pkg.product.name}</div>
                         </div>
-                        
+
                         <div className="space-y-1">
                           <Label>Quantidade</Label>
-                          <div className="font-medium">{5 * index}</div>
+                          <div className="font-medium">{pkg.quantity}</div>
                         </div>
-                        
+
                         <div className="space-y-1">
-                          <Label>Tipo do Pacote</Label>
-                          <div className="font-medium">{index === 1 ? "Caixa" : "Palete"}</div>
+                          <Label>Peso (kg)</Label>
+                          <div className="font-medium">{pkg.weight}</div>
                         </div>
-                        
+
                         <div className="space-y-1">
-                          <Label>Prateleira *</Label>
-                          <Select 
-                            value={productShelves[index] || ''} 
-                            onValueChange={(value) => handleShelfChange(index, value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione uma prateleira" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {locations.map((location) => (
-                                <SelectItem key={location.id} value={location.id.toString()}>
-                                  {location.code} - {location.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Label>Tipo de Embalagem</Label>
+                          <div className="font-medium">{pkg.packageType}</div>
                         </div>
-                        
-                        <div className="space-y-1">
-                          <Label>Empilhamento Máx</Label>
-                          <div className="font-medium">{index}</div>
-                        </div>
-                        
-                        <div className="md:col-span-2 grid grid-cols-3 gap-3">
+
+                        <div className="grid grid-cols-3 gap-3 md:col-span-2">
                           <div className="space-y-1">
                             <Label>Largura (cm)</Label>
-                            <div className="font-medium">{10 * index}</div>
+                            <div className="font-medium">{pkg.width}</div>
                           </div>
-                          
+
                           <div className="space-y-1">
                             <Label>Comprimento (cm)</Label>
-                            <div className="font-medium">{20 * index}</div>
+                            <div className="font-medium">{pkg.length}</div>
                           </div>
-                          
+
                           <div className="space-y-1">
                             <Label>Altura (cm)</Label>
-                            <div className="font-medium">{5 * index}</div>
+                            <div className="font-medium">{pkg.height}</div>
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <div className="space-y-1">
+                            <Label>Descrição</Label>
+                            <div className="text-sm text-gray-600">{pkg.product.description}</div>
                           </div>
                         </div>
                       </div>
@@ -240,7 +330,9 @@ const Tasks = () => {
 
           <DialogFooter className="pt-4 border-t mt-4">
             <Button variant="outline" onClick={handleCloseModal}>Cancelar</Button>
-            <Button onClick={handleSaveStatus}>Salvar</Button>
+            <Button onClick={handleSaveStatus} disabled={isUpdating}>
+              {isUpdating ? 'Salvando...' : 'Salvar'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

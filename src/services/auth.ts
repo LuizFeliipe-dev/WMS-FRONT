@@ -1,12 +1,7 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-import { User } from '../types/auth';
-
-interface LoginResponse {
-  user: User;
-  token: string;
-}
+import { LoginResponse } from '../types/auth';
 
 export const authService = {
   login: async (email: string, password: string): Promise<LoginResponse> => {
@@ -48,30 +43,28 @@ export const authService = {
         throw new Error(errorMessage);
       }
       
-      // Validate the data structure
-      if (!data || !data.token) {
+      // Validate the data structure for new format
+      if (!data || !data.token || !data.userId || !data.email || !Array.isArray(data.routes)) {
         console.error('Invalid response structure:', data);
-        throw new Error('Resposta inválida do servidor (token ausente)');
+        throw new Error('Resposta inválida do servidor (dados ausentes)');
       }
       
-      // Create user object from response
-      const userData = data.user || {};
-      
-      const result = {
+      const result: LoginResponse = {
         token: data.token,
-        user: {
-          id: userData.id || '',
-          name: userData.name || 'Usuário',
-          email: email,
-          permission: userData.permission || 'initial'
-        }
+        userId: data.userId,
+        email: data.email,
+        routes: data.routes
       };
       
       // Save token and user data
       localStorage.setItem('malldre_token', result.token);
-      localStorage.setItem('malldre_user', JSON.stringify(result.user));
+      localStorage.setItem('malldre_user', JSON.stringify({
+        userId: result.userId,
+        email: result.email,
+        routes: result.routes
+      }));
       
-      console.log('Login successful:', { token: result.token, user: result.user });
+      console.log('Login successful:', { token: result.token, user: { userId: result.userId, email: result.email, routes: result.routes } });
       
       return result;
     } catch (error) {

@@ -20,10 +20,13 @@ const DashboardHeader = () => {
     }
   }, []);
 
+  // Extract name from email (part before @) or use email if no name available
+  const displayName = user?.email?.split('@')[0] || 'Usuário';
+
   return (
     <header className="mb-6 md:mb-8">
       <h1 className="text-2xl md:text-3xl font-semibold">
-        {greeting}, {user?.name}
+        {greeting}, {displayName}
       </h1>
       <p className="text-gray-500 mt-1">
         Bem-vindo ao seu dashboard. Aqui está o resumo do seu armazém.

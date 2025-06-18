@@ -17,10 +17,9 @@ const GroupsTableSkeleton = () => {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Código</TableHead>
           <TableHead>Nome</TableHead>
-          {!isMobile && <TableHead>Descrição</TableHead>}
           <TableHead>Zona</TableHead>
+          <TableHead>Status</TableHead>
           <TableHead>Itens</TableHead>
           <TableHead className="text-right">Ações</TableHead>
         </TableRow>
@@ -29,24 +28,20 @@ const GroupsTableSkeleton = () => {
         {Array.from({ length: 5 }).map((_, index) => (
           <TableRow key={index}>
             <TableCell>
-              <Skeleton className="h-4 w-16" />
-            </TableCell>
-            <TableCell>
               <Skeleton className="h-4 w-24" />
             </TableCell>
-            {!isMobile && (
-              <TableCell>
-                <Skeleton className="h-4 w-32" />
-              </TableCell>
-            )}
             <TableCell>
               <Skeleton className="h-4 w-20" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="h-6 w-16 rounded-full" />
             </TableCell>
             <TableCell>
               <Skeleton className="h-6 w-12 rounded-full" />
             </TableCell>
             <TableCell className="text-right">
               <div className="flex justify-end space-x-2">
+                <Skeleton className="h-8 w-8" />
                 <Skeleton className="h-8 w-8" />
                 <Skeleton className="h-8 w-8" />
               </div>

@@ -1,11 +1,28 @@
 
 export interface Rack {
-  id: number;
-  code: string;
+  id: string;
+  shelfTypeId: string;
   name: string;
+  columns: number;
+  rows: number;
+  active: boolean;
+  accessLogId: string;
+  createdAt: string;
+  updatedAt: string;
+  shelfType: {
+    id: string;
+    name: string;
+    height: number;
+    width: number;
+    depth: number;
+    maxWeight: number;
+    stackable: boolean;
+    active: boolean;
+  };
+  // Campos legados para compatibilidade com o modal
+  code?: string;
   description?: string;
-  corridorId: string;
-  shelfTypeId?: string;
+  corridorId?: string;
   zoneId?: string;
   verticalShelves?: number;
   horizontalShelves?: number;
@@ -39,8 +56,20 @@ export interface ShelfType {
   isStackable: boolean;
 }
 
+export interface ZoneGroup {
+  id: string;
+  name: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Zone {
   id: string;
   name: string;
-  rackIds: string[];
+  groups: ZoneGroup[];
+  active: boolean;
+  accessLogId: string;
+  createdAt: string;
+  updatedAt: string;
 }

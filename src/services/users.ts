@@ -1,19 +1,54 @@
-import { UserData } from '@/types/user';
-import { Role } from '@/types/role';
+import { ApiResponse } from '@/types/pagination';
+import { getAuthHeader } from '@/utils/auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Get auth token from localStorage
-const getAuthHeader = () => {
-  const token = localStorage.getItem('malldre_token');
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
-};
+export interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+  cargo?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  permissions?: any[];
+  permission?: string;
+  roles?: any[];
+}
+
+interface GetUsersParams {
+  take?: number;
+  page?: number;
+  active?: boolean;
+  name?: string;
+}
 
 export const userService = {
-  // Get all users
-  getAll: async (): Promise<UserData[]> => {
+  // Get all users with pagination and filters
+  getAll: async (params?: GetUsersParams): Promise<UserData[]> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/user`, {
+      const queryParams = new URLSearchParams();
+
+      if (params?.take) {
+        queryParams.append('take', params.take.toString());
+      }
+
+      if (params?.page) {
+        queryParams.append('page', params.page.toString());
+      }
+
+      if (params?.active !== undefined) {
+        queryParams.append('active', params.active.toString());
+      }
+
+      if (params?.name && params.name.trim()) {
+        queryParams.append('name', params.name.trim());
+      }
+
+      const url = `${API_BASE_URL}/user${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+
+      const response = await fetch(url, {
         headers: {
           ...getAuthHeader(),
           'Content-Type': 'application/json',
@@ -32,17 +67,17 @@ export const userService = {
 
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        return []; // Retorna uma lista vazia se a resposta não for JSON
+        return [];
       }
 
-      return await response.json();
+      const apiResponse: ApiResponse<UserData> = await response.json();
+      return apiResponse.data || [];
     } catch (error) {
       console.error('Error fetching users:', error);
       throw error;
     }
   },
 
-  // Get user by ID
   getById: async (id: string): Promise<UserData> => {
     try {
       const response = await fetch(`${API_BASE_URL}/user/${id}`, {
@@ -69,8 +104,7 @@ export const userService = {
     }
   },
 
-  // Create new user
-  create: async (userData: Partial<UserData>): Promise<UserData> => {
+  create: async (userData: Partial<UserData> & { password: string; role?: string }): Promise<UserData> => {
     try {
       const response = await fetch(`${API_BASE_URL}/user`, {
         method: 'POST',
@@ -81,11 +115,8 @@ export const userService = {
         body: JSON.stringify({
           name: userData.name,
           email: userData.email,
-          cargo: userData.role, // Map role to cargo for API
-          department: userData.department,
-          permission: userData.permission,
-          active: true, // Default to active
-          roles: userData.roles || [] // Include roles
+          cargo: userData.role,
+          password: userData.password,
         }),
       });
 
@@ -106,10 +137,9 @@ export const userService = {
     }
   },
 
-  // Update user
-  update: async (id: string, userData: Partial<UserData>): Promise<UserData> => {
+  update: async (id: string, userData: Partial<UserData> & { password: string; role?: string }): Promise<UserData> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/user/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/user?userId=${id}`, {
         method: 'PUT',
         headers: {
           ...getAuthHeader(),
@@ -118,11 +148,8 @@ export const userService = {
         body: JSON.stringify({
           name: userData.name,
           email: userData.email,
-          cargo: userData.role, // Map role to cargo for API
-          department: userData.department,
-          permission: userData.permission,
-          active: userData.active !== undefined ? userData.active : true,
-          roles: userData.roles || []
+          cargo: userData.role,
+          password: userData.password,
         }),
       });
 
@@ -143,7 +170,6 @@ export const userService = {
     }
   },
 
-  // Delete user
   delete: async (id: string): Promise<void> => {
     try {
       const response = await fetch(`${API_BASE_URL}/user/${id}`, {
@@ -165,6 +191,97 @@ export const userService = {
       }
     } catch (error) {
       console.error(`Error deleting user ${id}:`, error);
+      throw error;
+    }
+  },
+
+  inactivate: async (rackId: string): Promise<void> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/inactivate?rackId=${rackId}`, {
+        method: 'PUT',
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Falha ao inativar prateleira');
+      }
+    } catch (error) {
+      console.error(`Error inactivating rack ${rackId}:`, error);
+      throw error;
+    }
+  },
+
+  reactivate: async (rackId: string): Promise<void> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/reactivate?rackId=${rackId}`, {
+        method: 'PUT',
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Falha ao reativar prateleira');
+      }
+    } catch (error) {
+      console.error(`Error reactivating rack ${rackId}:`, error);
+      throw error;
+    }
+  },
+
+  saveUserRoles: async (userId: string, payload: { roles: { roleId: string; writer: boolean }[] }, method: 'POST' | 'PUT' = 'POST'): Promise<void> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/role?userId=${userId}`, {
+        method: method,
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Falha ao salvar funções do usuário');
+        } else {
+          throw new Error(`Falha ao salvar funções do usuário: ${response.status}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving user roles:', error);
+      throw error;
+    }
+  },
+
+  deleteUserRole: async (userId: string, roleId: string): Promise<void> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/role?userId=${userId}&roleId=${roleId}`, {
+        method: 'DELETE',
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Falha ao excluir função do usuário');
+        } else {
+          throw new Error(`Falha ao excluir função do usuário: ${response.status}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting user role:', error);
       throw error;
     }
   },

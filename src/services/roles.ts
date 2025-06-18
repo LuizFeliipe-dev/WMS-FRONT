@@ -1,3 +1,5 @@
+
+import { ApiResponse } from '@/types/pagination';
 import { Role } from '@/types/role';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -24,7 +26,8 @@ export const roleService = {
         throw new Error(errorData.message || 'Falha ao obter funções');
       }
 
-      return await response.json();
+      const apiResponse: ApiResponse<Role> = await response.json();
+      return apiResponse.data || [];
     } catch (error) {
       console.error('Error fetching roles:', error);
       throw error;

@@ -1,16 +1,10 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { authService } from '../services/auth';
+import { User, RoutePermission, LoginResponse } from '../types/auth';
 
-// Types
+// Legacy permission type for backward compatibility
 export type UserPermission = 'initial' | 'second' | 'manager';
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  permission: UserPermission;
-}
 
 interface AuthContextType {
   user: User | null;
@@ -19,32 +13,18 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   hasPermission: (requiredPermission: UserPermission) => boolean;
+  hasRouteAccess: (route: string) => boolean;
+  hasWriteAccess: (route: string) => boolean;
+  canWriteToRoute: (route: string) => boolean;
 }
-
-// Mock users for demo - will be removed when using the real API
-const MOCK_USERS: User[] = [
-  { 
-    id: '1', 
-    name: 'Usuário Básico', 
-    email: 'basic@malldre.com', 
-    permission: 'initial' 
-  },
-  { 
-    id: '2', 
-    name: 'Usuário Intermediário', 
-    email: 'mid@malldre.com', 
-    permission: 'second' 
-  },
-  { 
-    id: '3', 
-    name: 'Gerente', 
-    email: 'manager@malldre.com', 
-    permission: 'manager' 
-  },
-];
 
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Helper function to normalize routes by removing leading/trailing slashes
+const normalizeRoute = (route: string): string => {
+  return route.replace(/^\/+|\/+$/g, '');
+};
 
 // Provider component
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -56,9 +36,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const storedUser = localStorage.getItem('malldre_user');
       const token = localStorage.getItem('malldre_token');
-      
+
       if (storedUser && token) {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+
+        // Validate user structure
+        if (parsedUser.userId && parsedUser.email && Array.isArray(parsedUser.routes)) {
+          setUser(parsedUser);
+        } else {
+          // Clear invalid data
+          localStorage.removeItem('malldre_user');
+          localStorage.removeItem('malldre_token');
+        }
+      } else {
+        console.log('No stored user or token found');
       }
     } catch (error) {
       console.error('Error parsing stored user data:', error);
@@ -72,40 +63,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
-    
+
     try {
-      console.log('Attempting API login...');
-      // Tenta usar a API para login
-      const response = await authService.login(email, password);
-      console.log('API login successful:', response);
-      
-      // O token e usuário já são salvos dentro da função authService.login
-      setUser(response.user);
+      const response: LoginResponse = await authService.login(email, password);
+
+      // Create user object from response
+      const userData: User = {
+        userId: response.userId,
+        email: response.email,
+        routes: response.routes
+      };
+
+      setUser(userData);
       setIsLoading(false);
-      return; // Return early since login was successful
     } catch (error) {
-      console.log('API login failed, trying mock login for development');
-      
-      // Fallback para mock login em desenvolvimento
-      return new Promise<void>((resolve, reject) => {
-        setTimeout(() => {
-          // Encontra usuário com email correspondente
-          const foundUser = MOCK_USERS.find(u => u.email === email);
-          
-          if (foundUser && password === '123456') { // Mock password check
-            console.log('Mock login successful');
-            setUser(foundUser);
-            localStorage.setItem('malldre_user', JSON.stringify(foundUser));
-            localStorage.setItem('malldre_token', 'mock-token-for-development');
-            setIsLoading(false);
-            resolve();
-          } else {
-            console.log('Mock login failed');
-            setIsLoading(false);
-            reject(new Error('Email ou senha inválidos'));
-          }
-        }, 800); // Simula atraso de rede
-      });
+      setIsLoading(false);
+      throw error; // Re-throw the error so it can be handled by the UI
     }
   };
 
@@ -115,17 +88,75 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // No navigating here, this should be handled in the UI components
   };
 
+  // Legacy permission system for backward compatibility
   const hasPermission = (requiredPermission: UserPermission): boolean => {
     if (!user) return false;
-    
-    // Manager has access to everything
-    if (user.permission === 'manager') return true;
-    
-    // Second level can access initial level
-    if (user.permission === 'second' && requiredPermission === 'initial') return true;
-    
-    // Otherwise, permissions must match exactly
-    return user.permission === requiredPermission;
+
+    // For now, if user has access to any route, assume they have permissions
+    // You can implement more specific logic based on your requirements
+    return user.routes.length > 0;
+  };
+
+  // Check if user has access to a specific route
+  const hasRouteAccess = (route: string): boolean => {
+    if (!user) {
+      return false;
+    }
+
+    // Normalize the requested route
+    const normalizedRoute = normalizeRoute(route);
+
+    const hasAccess = user.routes.some(permission => {
+      const normalizedPermissionRoute = normalizeRoute(permission.route);
+
+      // Check for exact match first
+      if (normalizedPermissionRoute === normalizedRoute) {
+        return true;
+      }
+
+      // Check if the permission route is a prefix of the requested route
+      // This handles cases where user has 'product' permission and requests 'product/specific-action'
+      if (normalizedRoute.startsWith(normalizedPermissionRoute + '/')) {
+        return true;
+      }
+
+      return false;
+    });
+
+    return hasAccess || route === 'load-history';
+  };
+
+  // Check if user has write access to a route
+  const hasWriteAccess = (route: string): boolean => {
+    if (!user) {
+      return false;
+    }
+
+    const normalizedRoute = normalizeRoute(route);
+
+    const routePermission = user.routes.find(permission => {
+      const normalizedPermissionRoute = normalizeRoute(permission.route);
+
+      // Check for exact match first
+      if (normalizedPermissionRoute === normalizedRoute) {
+        return true;
+      }
+
+      // Check if the permission route is a prefix of the requested route
+      if (normalizedRoute.startsWith(normalizedPermissionRoute + '/')) {
+        return true;
+      }
+
+      return false;
+    });
+
+    const hasWrite = routePermission ? routePermission.writer : false;
+    return hasWrite;
+  };
+
+  // Alias for hasWriteAccess for better naming
+  const canWriteToRoute = (route: string): boolean => {
+    return hasWriteAccess(route);
   };
 
   return (
@@ -135,7 +166,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isLoading,
       login,
       logout,
-      hasPermission
+      hasPermission,
+      hasRouteAccess,
+      hasWriteAccess,
+      canWriteToRoute
     }}>
       {children}
     </AuthContext.Provider>

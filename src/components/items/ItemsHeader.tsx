@@ -13,16 +13,16 @@ const ItemsHeader = ({ onAddItem }: ItemsHeaderProps) => {
       <div>
         <h1 className="text-3xl font-semibold flex items-center">
           <Package className="mr-3 h-8 w-8 text-primary" />
-          Cadastro de Itens
+          Cadastro de Produtos
         </h1>
         <p className="text-gray-500 mt-1">
-          Gerencie os itens disponíveis no sistema
+          Gerencie os produtos disponíveis no sistema
         </p>
       </div>
       
       <Button onClick={onAddItem}>
         <Plus className="mr-2 h-5 w-5" />
-        Novo Item
+        Novo Produto
       </Button>
     </header>
   );

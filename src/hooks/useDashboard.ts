@@ -10,15 +10,16 @@ export interface DashboardLoad {
   supplierId: string;
 }
 
-export interface DashboardData {
+export interface IDashboard {
   loadsThisMonth: number;
   suppliersThisMonth: number;
   totalValueThisMonth: number;
   pendingAllocationCount: number;
+  lastThreeTasks: DashboardLoad[];
   lastThreeLoads: DashboardLoad[];
 }
 
-const fetchDashboardData = async (): Promise<DashboardData> => {
+const fetchDashboardData = async (): Promise<IDashboard> => {
   const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/dashboard/monthly`, {
     headers: {
       'Content-Type': 'application/json',

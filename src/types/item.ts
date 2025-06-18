@@ -16,4 +16,7 @@ export interface Item {
   createdAt: string;
   updatedAt: string;
   accessLogId: string;
+  group: {
+    name: string;
+  };
 }

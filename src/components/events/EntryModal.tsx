@@ -1,68 +1,128 @@
-
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { useItems } from '@/hooks/useItems';
-import { useSuppliers } from '@/hooks/useSuppliers';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Minus, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { productService } from '@/services/products';
+import { supplierService } from '@/services/suppliers';
+import { getAuthHeader } from '@/utils/auth';
 
 // Tipo de pacote
-type PackageType = 'Unit' | 'Pack' | 'Box' | 'Carton' | 'Pallet';
+type PackageType = 'BX' | 'PK' | 'UN' | 'CT' | 'PL';
 
 // Interface para o item de produto
 interface ProductItem {
   id: string;
-  itemId: string;
+  productId: string;
   quantity: number;
   width: number;
   height: number;
   length: number;
-  maxStack: number;
-  packageType: PackageType;
+  weight: number;
+  stackable: number;
+  pkgType: PackageType;
+  pkgQty: number;
 }
 
 interface EntryModalProps {
   isOpen: boolean;
   onClose: () => void;
   orderNumber: string;
+  onSuccess?: () => void;
 }
 
-const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+const EntryModal = ({ isOpen, onClose, orderNumber, onSuccess }: EntryModalProps) => {
   const [supplier, setSupplier] = useState('');
   const [totalValue, setTotalValue] = useState('');
   const [products, setProducts] = useState<ProductItem[]>([
     {
       id: '1',
-      itemId: '',
+      productId: '',
       quantity: 1,
       width: 0,
       height: 0,
       length: 0,
-      maxStack: 1,
-      packageType: 'Box'
+      weight: 0,
+      stackable: 1,
+      pkgType: 'BX',
+      pkgQty: 1
     }
   ]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>([]);
+  const [isLoadingSuppliers, setIsLoadingSuppliers] = useState(false);
+  const [isLoadingItems, setIsLoadingItems] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const { items } = useItems();
-  const { suppliers } = useSuppliers();
+
+  // Carregar fornecedores da API
+  useEffect(() => {
+    const loadSuppliers = async () => {
+      setIsLoadingSuppliers(true);
+      try {
+        const data = await supplierService.getAll();
+        setSuppliers(data);
+      } catch (error) {
+        console.error('Error loading suppliers:', error);
+        toast({
+          title: "Erro",
+          description: "Falha ao carregar fornecedores",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingSuppliers(false);
+      }
+    };
+
+    if (isOpen) {
+      loadSuppliers();
+    }
+  }, [isOpen, toast]);
+
+  // Carregar produtos da API
+  useEffect(() => {
+    const loadItems = async () => {
+      setIsLoadingItems(true);
+      try {
+        const data = await productService.getAll();
+        setItems(data);
+      } catch (error) {
+        console.error('Error loading items:', error);
+        toast({
+          title: "Erro",
+          description: "Falha ao carregar produtos",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingItems(false);
+      }
+    };
+
+    if (isOpen) {
+      loadItems();
+    }
+  }, [isOpen, toast]);
 
   const handleAddProduct = () => {
     setProducts([
       ...products,
       {
         id: Date.now().toString(),
-        itemId: '',
+        productId: '',
         quantity: 1,
         width: 0,
         height: 0,
         length: 0,
-        maxStack: 1,
-        packageType: 'Box'
+        weight: 0,
+        stackable: 1,
+        pkgType: 'BX',
+        pkgQty: 1
       }
     ]);
   };
@@ -80,7 +140,7 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
     ));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Validação básica
     if (!supplier) {
       toast({
@@ -93,9 +153,10 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
 
     // Validação dos produtos
     const isValid = products.every(product => 
-      product.itemId && product.quantity > 0 && 
+      product.productId && product.quantity > 0 && 
       product.width > 0 && product.height > 0 && 
-      product.length > 0 && product.maxStack > 0
+      product.length > 0 && product.weight > 0 &&
+      product.stackable > 0 && product.pkgQty > 0
     );
 
     if (!isValid) {
@@ -107,13 +168,62 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
       return;
     }
 
-    // Aqui processaríamos os dados do formulário
-    toast({
-      title: "Sucesso",
-      description: `Entrada da ordem #${orderNumber} registrada com sucesso`
-    });
-    
-    onClose();
+    setIsSubmitting(true);
+
+    try {
+      // Preparar payload para a API com os nomes corretos dos campos
+      const loadData = {
+        supplierId: supplier,
+        documentNumber: orderNumber,
+        value: totalValue ? parseFloat(totalValue) : 0,
+        packages: products.map(product => ({
+          productId: product.productId,
+          quantity: product.quantity,
+          height: product.height,
+          width: product.width,
+          length: product.length,
+          weight: product.weight,
+          stackable: product.stackable,
+          pkgType: product.pkgType,
+          pkgQty: product.pkgQty
+        }))
+      };
+
+      const response = await fetch(`${API_BASE_URL}/load`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(loadData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Falha ao registrar entrada');
+      }
+
+      toast({
+        title: "Sucesso",
+        description: `Entrada da ordem #${orderNumber} registrada com sucesso`
+      });
+      
+      // Chamar callback de sucesso para limpar o campo
+      if (onSuccess) {
+        onSuccess();
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error('Error creating load:', error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Falha ao registrar entrada",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -131,9 +241,9 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="supplier">Fornecedor *</Label>
-                <Select value={supplier} onValueChange={setSupplier}>
+                <Select value={supplier} onValueChange={setSupplier} disabled={isLoadingSuppliers}>
                   <SelectTrigger id="supplier">
-                    <SelectValue placeholder="Selecione um fornecedor" />
+                    <SelectValue placeholder={isLoadingSuppliers ? "Carregando..." : "Selecione um fornecedor"} />
                   </SelectTrigger>
                   <SelectContent>
                     {suppliers.map((supplier) => (
@@ -168,6 +278,7 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
                   size="sm" 
                   onClick={handleAddProduct}
                   className="flex items-center gap-1"
+                  disabled={isSubmitting}
                 >
                   <Plus className="h-4 w-4" />
                   Adicionar Produto
@@ -185,20 +296,21 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleRemoveProduct(product.id)}
-                      disabled={products.length === 1}
+                      disabled={products.length === 1 || isSubmitting}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                   
                   <div className="space-y-1">
-                    <Label htmlFor={`product-${product.id}-id`}>Item *</Label>
+                    <Label htmlFor={`product-${product.id}-id`}>Produto *</Label>
                     <Select 
-                      value={product.itemId} 
-                      onValueChange={(value) => handleProductChange(product.id, 'itemId', value)}
+                      value={product.productId} 
+                      onValueChange={(value) => handleProductChange(product.id, 'productId', value)}
+                      disabled={isLoadingItems}
                     >
                       <SelectTrigger id={`product-${product.id}-id`}>
-                        <SelectValue placeholder="Selecione um item" />
+                        <SelectValue placeholder={isLoadingItems ? "Carregando..." : "Selecione um produto"} />
                       </SelectTrigger>
                       <SelectContent>
                         {items.map((item) => (
@@ -257,10 +369,10 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
                   <div className="space-y-1">
                     <Label htmlFor={`product-${product.id}-type`}>Tipo do Pacote *</Label>
                     <Select 
-                      value={product.packageType} 
+                      value={product.pkgType} 
                       onValueChange={(value) => handleProductChange(
                         product.id, 
-                        'packageType', 
+                        'pkgType', 
                         value as PackageType
                       )}
                     >
@@ -268,33 +380,33 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Unit">Unidade</SelectItem>
-                        <SelectItem value="Pack">Pacote</SelectItem>
-                        <SelectItem value="Box">Caixa</SelectItem>
-                        <SelectItem value="Carton">Cartucho</SelectItem>
-                        <SelectItem value="Pallet">Palete</SelectItem>
+                        <SelectItem value="UN">Unidade</SelectItem>
+                        <SelectItem value="PK">Pacote</SelectItem>
+                        <SelectItem value="BX">Caixa</SelectItem>
+                        <SelectItem value="CT">Cartucho</SelectItem>
+                        <SelectItem value="PL">Palete</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
                   <div className="space-y-1">
-                    <Label htmlFor={`product-${product.id}-stack`}>Empilhamento Máx *</Label>
+                    <Label htmlFor={`product-${product.id}-pkgQty`}>Qtd. Pacote *</Label>
                     <Input
-                      id={`product-${product.id}-stack`}
+                      id={`product-${product.id}-pkgQty`}
                       type="number"
                       min="1"
-                      value={product.maxStack}
+                      value={product.pkgQty}
                       onChange={(e) => handleProductChange(
                         product.id, 
-                        'maxStack', 
+                        'pkgQty', 
                         parseInt(e.target.value) || 1
                       )}
                     />
                   </div>
                   
-                  <div className="md:col-span-3 grid grid-cols-3 gap-3">
+                  <div className="md:col-span-4 grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div className="space-y-1">
-                      <Label htmlFor={`product-${product.id}-width`}>Largura (cm) *</Label>
+                      <Label htmlFor={`product-${product.id}-width`} className="text-xs">Largura (cm) *</Label>
                       <Input
                         id={`product-${product.id}-width`}
                         type="number"
@@ -306,11 +418,12 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
                           'width', 
                           parseFloat(e.target.value) || 0
                         )}
+                        className="text-sm"
                       />
                     </div>
                     
                     <div className="space-y-1">
-                      <Label htmlFor={`product-${product.id}-length`}>Comprimento (cm) *</Label>
+                      <Label htmlFor={`product-${product.id}-length`} className="text-xs">Comprimento (cm) *</Label>
                       <Input
                         id={`product-${product.id}-length`}
                         type="number"
@@ -322,11 +435,12 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
                           'length', 
                           parseFloat(e.target.value) || 0
                         )}
+                        className="text-sm"
                       />
                     </div>
                     
                     <div className="space-y-1">
-                      <Label htmlFor={`product-${product.id}-height`}>Altura (cm) *</Label>
+                      <Label htmlFor={`product-${product.id}-height`} className="text-xs">Altura (cm) *</Label>
                       <Input
                         id={`product-${product.id}-height`}
                         type="number"
@@ -338,6 +452,40 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
                           'height', 
                           parseFloat(e.target.value) || 0
                         )}
+                        className="text-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor={`product-${product.id}-weight`} className="text-xs">Peso (kg) *</Label>
+                      <Input
+                        id={`product-${product.id}-weight`}
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={product.weight}
+                        onChange={(e) => handleProductChange(
+                          product.id, 
+                          'weight', 
+                          parseFloat(e.target.value) || 0
+                        )}
+                        className="text-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor={`product-${product.id}-stackable`} className="text-xs">Empilhamento Máx *</Label>
+                      <Input
+                        id={`product-${product.id}-stackable`}
+                        type="number"
+                        min="1"
+                        value={product.stackable}
+                        onChange={(e) => handleProductChange(
+                          product.id, 
+                          'stackable', 
+                          parseInt(e.target.value) || 1
+                        )}
+                        className="text-sm"
                       />
                     </div>
                   </div>
@@ -348,8 +496,12 @@ const EntryModal = ({ isOpen, onClose, orderNumber }: EntryModalProps) => {
         </ScrollArea>
 
         <DialogFooter className="pt-4 border-t mt-4">
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleSubmit}>Registrar Entrada</Button>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? "Registrando..." : "Registrar Entrada"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

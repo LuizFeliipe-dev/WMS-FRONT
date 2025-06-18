@@ -1,15 +1,12 @@
 
 import React from 'react';
 import TaskItem from './TaskItem';
-import { useEntries } from '@/hooks/useEntries';
+import { useLoads } from '@/hooks/useLoads';
 import { useNavigate } from 'react-router-dom';
+import { IDashboard } from '@/hooks/useDashboard';
 
-const TasksSection = () => {
-  const { entries } = useEntries();
+const TasksSection = ({ dashboardData }: { dashboardData: IDashboard }) => {
   const navigate = useNavigate();
-  
-  // Filter entries that don't have "allocated" status
-  const pendingEntries = entries.filter(entry => entry.status !== 'allocated');
 
   const handleViewAllTasks = () => {
     navigate('/tasks');
@@ -23,13 +20,13 @@ const TasksSection = () => {
     <div className="bg-white rounded-xl shadow-sm border p-4 md:p-6">
       <h2 className="text-xl font-semibold mb-4">Tarefas Pendentes</h2>
       <div className="space-y-3">
-        {pendingEntries.length > 0 ? (
-          pendingEntries.slice(0, 3).map(entry => (
-            <TaskItem 
-              key={entry.id}
-              title={`Entrada de mercadorias - Pedido #${entry.orderNumber}`}
-              dueDate={entry.date}
-              status={entry.status}
+        {dashboardData?.lastThreeTasks && dashboardData?.lastThreeTasks.length > 0 ? (
+          dashboardData?.lastThreeTasks.slice(0, 3).map(load => (
+            <TaskItem
+              key={load.id}
+              title={`Carga ${load.value}`}
+              dueDate={new Date(load.createdAt).toLocaleDateString('pt-BR')}
+              status={load.status.toLowerCase() as any}
               to={`/tasks`}
               onClick={handleTaskClick}
             />
@@ -40,7 +37,7 @@ const TasksSection = () => {
           </div>
         )}
       </div>
-      <button 
+      <button
         className="mt-4 text-sm text-primary hover:text-primary/80 font-medium"
         onClick={handleViewAllTasks}
       >

@@ -1,4 +1,3 @@
-
 export type UserPermission = 'initial' | 'second' | 'manager';
 
 export type UserPermissionModule = 'USUARIO' | 'ARMAZEM' | 'INVENTARIO' | 'RELATORIO';
@@ -10,11 +9,25 @@ export interface UserPermissionOption {
   value: UserPermission;
 }
 
+// Route permission interface
+export interface RoutePermission {
+  route: string;
+  writer: boolean;
+}
+
+// Updated User interface
 export interface User {
-  id: string;
-  name: string;
+  userId: string;
   email: string;
-  permission: UserPermission;
+  routes: RoutePermission[];
+}
+
+// Login response interface
+export interface LoginResponse {
+  userId: string;
+  email: string;
+  routes: RoutePermission[];
+  token: string;
 }
 
 export interface PermissionData {

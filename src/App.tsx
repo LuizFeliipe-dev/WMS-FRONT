@@ -8,6 +8,7 @@ import { AuthProvider } from "./lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import AppLayout from "./components/AppLayout";
 import ResponsiveContainer from "./components/ResponsiveContainer";
+import AuthRequired from "./components/AuthRequired";
 
 // Pages
 import Login from "./pages/Login";
@@ -16,104 +17,66 @@ import Dashboard from "./pages/Dashboard";
 import Items from "./pages/Items";
 import Users from "./pages/Users";
 import Suppliers from "./pages/Suppliers";
+import SupplierContacts from "./pages/SupplierContacts";
 import Groups from "./pages/Groups";
 import Events from "./pages/Events";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import TransactionSection from "./components/events/TransactionSection";
 import EntrySection from "./components/events/EntrySection";
-import InventorySection from "./components/events/InventorySection";
-import Stats3DView from "./components/Stats3DView";
+import NewTransactionSection from "./components/events/NewTransactionSection";
 import RacksPage from "./pages/Racks";
 import BalancePage from "./pages/Balance";
 import ShelfTypes from "./pages/ShelfTypes";
 import Zones from "./pages/Zones";
 import Tasks from "./pages/Tasks";
+import LoadHistory from './pages/loadsHistory';
 
-// Create proper pages for Entry, Inventory, and Location View
+// Create proper pages for Entry and Transaction
 const EntryPage = () => (
-  <AppLayout>
-    <ResponsiveContainer>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="page-transition"
-      >
-        <h1 className="text-2xl font-bold mb-6">Entrada de Produtos</h1>
-        <EntrySection />
-      </motion.div>
-    </ResponsiveContainer>
-  </AppLayout>
-);
-
-const InventoryPage = () => (
-  <AppLayout>
-    <ResponsiveContainer>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="page-transition"
-      >
-        <h1 className="text-2xl font-bold mb-6">Inventário</h1>
-        <InventorySection />
-      </motion.div>
-    </ResponsiveContainer>
-  </AppLayout>
+  <AuthRequired>
+    <AppLayout>
+      <ResponsiveContainer>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="page-transition"
+        >
+          <h1 className="text-2xl font-bold mb-6">Entrada de Produtos</h1>
+          <EntrySection />
+        </motion.div>
+      </ResponsiveContainer>
+    </AppLayout>
+  </AuthRequired>
 );
 
 const TransactionPage = () => (
-  <AppLayout>
-    <ResponsiveContainer>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="page-transition"
-      >
-        <h1 className="text-2xl font-bold mb-6">Transação de Produtos</h1>
-        <TransactionSection />
-      </motion.div>
-    </ResponsiveContainer>
-  </AppLayout>
-);
-
-// Create a dedicated page for 3D visualization
-const LocationViewPage = () => (
-  <AppLayout>
-    <ResponsiveContainer>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="page-transition"
-      >
-        <h1 className="text-2xl font-bold mb-6">Visualização 3D do Armazém</h1>
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden h-[calc(100vh-180px)]">
-          <Stats3DView />
-        </div>
-      </motion.div>
-    </ResponsiveContainer>
-  </AppLayout>
-);
-
-const StatisticsPage = () => (
-  <AppLayout>
-    <ResponsiveContainer>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="page-transition"
-      >
-        <h1 className="text-2xl font-bold">Estatísticas</h1>
-        <p className="mt-4">Página em desenvolvimento</p>
-      </motion.div>
-    </ResponsiveContainer>
-  </AppLayout>
+  <AuthRequired>
+    <AppLayout>
+      <ResponsiveContainer>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="page-transition"
+        >
+          <header className="mb-6 md:mb-8">
+            <h1 className="text-2xl md:text-3xl font-semibold">Transação</h1>
+            <p className="text-gray-500 mt-1">
+              Registre a movimentação de itens do armazém
+            </p>
+          </header>
+          <NewTransactionSection />
+        </motion.div>
+      </ResponsiveContainer>
+    </AppLayout>
+  </AuthRequired>
 );
 
 // Create QueryClient inside the component to ensure proper React context
 const App = () => {
   // Create a client inside the component
   const queryClient = new QueryClient();
-  
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -126,22 +89,78 @@ const App = () => {
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/auth" element={<Auth />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/items" element={<Items />} />
-                <Route path="/suppliers" element={<Suppliers />} />
-                <Route path="/groups" element={<Groups />} />
-                <Route path="/racks" element={<RacksPage />} />
-                <Route path="/users" element={<Users />} />
-                <Route path="/events" element={<Events />} />
+                <Route path="/dashboard" element={
+                  <AuthRequired>
+                    <Dashboard />
+                  </AuthRequired>
+                } />
+                <Route path="/items" element={
+                  <AuthRequired>
+                    <Items />
+                  </AuthRequired>
+                } />
+                <Route path="/suppliers" element={
+                  <AuthRequired>
+                    <Suppliers />
+                  </AuthRequired>
+                } />
+                <Route path="/supplier-contacts" element={
+                  <AuthRequired>
+                    <SupplierContacts />
+                  </AuthRequired>
+                } />
+                <Route path="/groups" element={
+                  <AuthRequired>
+                    <Groups />
+                  </AuthRequired>
+                } />
+                <Route path="/racks" element={
+                  <AuthRequired>
+                    <RacksPage />
+                  </AuthRequired>
+                } />
+                <Route path="/users" element={
+                  <AuthRequired>
+                    <Users />
+                  </AuthRequired>
+                } />
+                <Route path="/events" element={
+                  <AuthRequired>
+                    <Events />
+                  </AuthRequired>
+                } />
+                <Route path="/load-history" element={
+                  <AuthRequired>
+                    <LoadHistory />
+                  </AuthRequired>
+                } />
                 <Route path="/entry" element={<EntryPage />} />
-                <Route path="/inventory" element={<InventoryPage />} />
                 <Route path="/transaction" element={<TransactionPage />} />
-                <Route path="/tasks" element={<Tasks />} />
-                <Route path="/statistics" element={<StatisticsPage />} />
-                <Route path="/location-view" element={<LocationViewPage />} />
-                <Route path="/balance" element={<BalancePage />} />
-                <Route path="/shelf-types" element={<ShelfTypes />} />
-                <Route path="/zones" element={<Zones />} />
+                <Route path="/tasks" element={
+                  <AuthRequired>
+                    <Tasks />
+                  </AuthRequired>
+                } />
+                <Route path="/load" element={
+                  <AuthRequired>
+                    <Tasks />
+                  </AuthRequired>
+                } />
+                <Route path="/balance" element={
+                  <AuthRequired>
+                    <BalancePage />
+                  </AuthRequired>
+                } />
+                <Route path="/shelf-types" element={
+                  <AuthRequired>
+                    <ShelfTypes />
+                  </AuthRequired>
+                } />
+                <Route path="/zones" element={
+                  <AuthRequired>
+                    <Zones />
+                  </AuthRequired>
+                } />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AnimatePresence>

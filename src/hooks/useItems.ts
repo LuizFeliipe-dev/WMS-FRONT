@@ -1,20 +1,21 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Item, ItemFormValues } from '../types/item';
 import { useToast } from './use-toast';
 import { productService } from '@/services/products';
-import { groupService } from '@/services/groups';
 
 // Start with empty arrays that will be populated from API
 export let groups: { id: string; name: string }[] = [];
 
-export const useItems = () => {
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { getAuthHeader } from '@/utils/auth';
+
+export const useItems = (take?: number) => {
   const [items, setItems] = useState<Item[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGroup, setFilterGroup] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [showActive, setShowActive] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<ItemFormValues | null>(null);
   const { toast } = useToast();
@@ -24,25 +25,21 @@ export const useItems = () => {
     loadInitialData();
   }, []);
 
+  // Fetch items when filters change
+  useEffect(() => {
+    fetchItems();
+  }, [searchTerm, filterGroup, showActive, currentPage]);
+
   const loadInitialData = async () => {
     try {
       setIsLoading(true);
-      
-      // Load items and groups in parallel
-      const [itemsData, groupsData] = await Promise.all([
-        productService.getAll(),
-        groupService.getAll().catch(err => {
-          console.error('Error loading groups:', err);
-          return [];
-        })
-      ]);
 
-      // Update the exported arrays
+      // Load categories
+      const categoriesData = await loadCategories();
       groups.length = 0;
-      groups.push(...groupsData.map(g => ({ id: g.id, name: g.name })));
+      groups.push(...categoriesData.data.map(g => ({ id: g.id, name: g.name })));
 
-      setItems(itemsData);
-      setFilteredItems(itemsData);
+      // Initial items load will be handled by the useEffect above
     } catch (error) {
       console.error("Error loading initial data:", error);
       toast({
@@ -50,37 +47,56 @@ export const useItems = () => {
         description: "Falha ao carregar dados. Tente novamente.",
         variant: "destructive",
       });
+    }
+  };
+
+  const fetchItems = async () => {
+    try {
+      setIsLoading(true);
+
+      const params = {
+        take: take || 10,
+        page: currentPage,
+        active: showActive,
+        ...(searchTerm && { name: searchTerm }),
+        ...(filterGroup && filterGroup !== 'all' && { groupId: filterGroup })
+      };
+
+      const itemsData = await productService.getAll(params);
+      setItems(itemsData);
+    } catch (error) {
+      console.error("Error loading items:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao carregar produtos. Tente novamente.",
+        variant: "destructive",
+      });
       setItems([]);
-      setFilteredItems([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Apply filters
-  useEffect(() => {
-    let results = items;
-    
-    if (searchTerm) {
-      results = results.filter(
-        item =>
-          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+  const loadCategories = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/product/group`, {
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Falha ao obter categorias');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      return [];
     }
-    
-    if (filterGroup) {
-      results = results.filter(item => item.productGroupId === filterGroup);
-    }
-    
-    if (statusFilter === 'active') {
-      results = results.filter(item => item.active);
-    } else if (statusFilter === 'inactive') {
-      results = results.filter(item => !item.active);
-    }
-    
-    setFilteredItems(results);
-  }, [items, searchTerm, filterGroup, statusFilter]);
+  };
 
   const handleAddItem = () => {
     setEditingItem(null);
@@ -96,28 +112,15 @@ export const useItems = () => {
       productGroupId: item.productGroupId,
       active: item.active,
     };
-    
+
     setEditingItem(itemForm);
     setOpenDialog(true);
   };
 
-  const handleDeleteItem = useCallback(async (id: string) => {
-    try {
-      await productService.delete(id);
-      setItems(prevItems => prevItems.filter(item => item.id !== id));
-      toast({
-        title: "Sucesso",
-        description: "Item excluído com sucesso",
-      });
-    } catch (error) {
-      console.error("Error deleting item:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao excluir item",
-        variant: "destructive",
-      });
-    }
-  }, [toast]);
+  const handleShowActiveChange = (value: boolean) => {
+    setShowActive(value);
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
 
   const onSubmitItem = useCallback(
     async (data: ItemFormValues) => {
@@ -138,6 +141,8 @@ export const useItems = () => {
             description: "Item atualizado com sucesso",
           });
         } else {
+          // For creation, we don't need to include the group property
+          // as it will be populated by the server based on productGroupId
           const newItemData = {
             name: data.name,
             description: data.description,
@@ -145,9 +150,9 @@ export const useItems = () => {
             productGroupId: data.productGroupId,
             active: data.active,
           };
-          
-          const newItem = await productService.create(newItemData);
-          setItems(prevItems => [...prevItems, newItem]);
+
+          await productService.create(newItemData);
+          await fetchItems(); // Reload to respect current filters
           toast({
             title: "Sucesso",
             description: "Novo item criado com sucesso",
@@ -168,20 +173,23 @@ export const useItems = () => {
 
   return {
     items,
-    filteredItems,
+    filteredItems: items, // Items are now filtered server-side
     isLoading,
     searchTerm,
     setSearchTerm,
     filterGroup,
     setFilterGroup,
-    statusFilter,
-    setStatusFilter,
+    statusFilter: 'all', // Keeping for compatibility
+    setStatusFilter: () => {}, // Keeping for compatibility
+    showActive,
+    setShowActive: handleShowActiveChange,
+    currentPage,
+    setCurrentPage,
     openDialog,
     setOpenDialog,
     editingItem,
     handleAddItem,
     handleEditItem,
-    handleDeleteItem,
     onSubmitItem,
     setItems
   };

@@ -19,12 +19,10 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  
-  // Get the return URL from location state or default to '/dashboard'
+
   const from = location.state?.from?.pathname || '/dashboard';
-  
+
   useEffect(() => {
-    // If already authenticated, redirect to the from page
     if (isAuthenticated) {
       navigate(from, { replace: true });
     }
@@ -37,14 +35,11 @@ const Auth = () => {
 
     try {
       await login(email, password);
-      console.log('Login successful, redirecting to:', from);
       toast({
         title: "Login realizado com sucesso",
         description: "Redirecionando para o dashboard...",
       });
-      // Redirecionamento acontecerá no useEffect quando isAuthenticated mudar
     } catch (err) {
-      console.error('Login failed:', err);
       setError(err instanceof Error ? err.message : 'Email ou senha inválidos');
     } finally {
       setIsLoading(false);
@@ -137,17 +132,6 @@ const Auth = () => {
                 </Button>
               </div>
             </form>
-
-            <div className="mt-6 md:mt-8 text-center text-sm text-gray-500">
-              <p>
-                Usuários para teste (senha: 123456):
-              </p>
-              <div className="mt-2 space-y-1">
-                <p>basic@malldre.com (Usuário básico)</p>
-                <p>mid@malldre.com (Intermediário)</p>
-                <p>manager@malldre.com (Gerente)</p>
-              </div>
-            </div>
           </div>
         </div>
       </motion.div>
