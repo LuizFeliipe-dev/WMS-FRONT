@@ -9,20 +9,17 @@ export interface UserPermissionOption {
   value: UserPermission;
 }
 
-// Route permission interface
 export interface RoutePermission {
   route: string;
   writer: boolean;
 }
 
-// Updated User interface
 export interface User {
   userId: string;
   email: string;
   routes: RoutePermission[];
 }
 
-// Login response interface
 export interface LoginResponse {
   userId: string;
   email: string;

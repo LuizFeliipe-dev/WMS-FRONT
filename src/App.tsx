@@ -4,78 +4,32 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./lib/auth";
-import { motion, AnimatePresence } from "framer-motion";
-import AppLayout from "./components/AppLayout";
-import ResponsiveContainer from "./components/ResponsiveContainer";
+import { AnimatePresence } from "framer-motion";
 import AuthRequired from "./components/AuthRequired";
 
 // Pages
-import Login from "./pages/Login";
 import Auth from "./pages/auth";
-import Dashboard from "./pages/Dashboard";
-import Items from "./pages/Items";
-import Users from "./pages/Users";
-import Suppliers from "./pages/Suppliers";
-import SupplierContacts from "./pages/SupplierContacts";
-import Groups from "./pages/Groups";
-import Events from "./pages/Events";
-import NotFound from "./pages/NotFound";
-import Settings from "./pages/Settings";
-import TransactionSection from "./components/events/TransactionSection";
-import EntrySection from "./components/events/EntrySection";
-import NewTransactionSection from "./components/events/NewTransactionSection";
-import RacksPage from "./pages/Racks";
-import BalancePage from "./pages/Balance";
-import ShelfTypes from "./pages/ShelfTypes";
-import Zones from "./pages/Zones";
-import Tasks from "./pages/Tasks";
+import Dashboard from "./pages/dashboard/index";
+import Users from "./pages/users";
+import NotFound from "./pages/notFound";
+import RacksPage from "./pages/rack";
+import BalancePage from "./pages/balance";
+import ShelfTypes from "./pages/shelfType";
+import Zones from "./pages/zone";
+import Tasks from "./pages/task";
 import LoadHistory from './pages/loadsHistory';
+import Login from './pages/auth/Login';
+import Groups from './pages/productGroup';
+import Suppliers from './pages/supplier';
+import SupplierContacts from './pages/supplierContact';
+import Product from './pages/product';
+import { AuthProvider } from './contexts/AuthProvider';
+import EntryPage from './pages/events/entry/entryPage';
+import TransactionPage from './pages/events/transaction/transactionPage';
+import { useState } from 'react';
 
-// Create proper pages for Entry and Transaction
-const EntryPage = () => (
-  <AuthRequired>
-    <AppLayout>
-      <ResponsiveContainer>
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="page-transition"
-        >
-          <h1 className="text-2xl font-bold mb-6">Entrada de Produtos</h1>
-          <EntrySection />
-        </motion.div>
-      </ResponsiveContainer>
-    </AppLayout>
-  </AuthRequired>
-);
-
-const TransactionPage = () => (
-  <AuthRequired>
-    <AppLayout>
-      <ResponsiveContainer>
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="page-transition"
-        >
-          <header className="mb-6 md:mb-8">
-            <h1 className="text-2xl md:text-3xl font-semibold">Transação</h1>
-            <p className="text-gray-500 mt-1">
-              Registre a movimentação de itens do armazém
-            </p>
-          </header>
-          <NewTransactionSection />
-        </motion.div>
-      </ResponsiveContainer>
-    </AppLayout>
-  </AuthRequired>
-);
-
-// Create QueryClient inside the component to ensure proper React context
 const App = () => {
-  // Create a client inside the component
-  const queryClient = new QueryClient();
+  const [queryClient] = useState(() => new QueryClient());
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -94,9 +48,9 @@ const App = () => {
                     <Dashboard />
                   </AuthRequired>
                 } />
-                <Route path="/items" element={
+                <Route path="/product" element={
                   <AuthRequired>
-                    <Items />
+                    <Product />
                   </AuthRequired>
                 } />
                 <Route path="/suppliers" element={
@@ -124,18 +78,21 @@ const App = () => {
                     <Users />
                   </AuthRequired>
                 } />
-                <Route path="/events" element={
-                  <AuthRequired>
-                    <Events />
-                  </AuthRequired>
-                } />
                 <Route path="/load-history" element={
                   <AuthRequired>
                     <LoadHistory />
                   </AuthRequired>
                 } />
-                <Route path="/entry" element={<EntryPage />} />
-                <Route path="/transaction" element={<TransactionPage />} />
+                <Route path="/entry" element={
+                  <AuthRequired>
+                    <EntryPage />
+                  </AuthRequired>
+                } />
+                <Route path="/transaction" element={
+                  <AuthRequired>
+                    <TransactionPage />
+                  </AuthRequired>}
+                />
                 <Route path="/tasks" element={
                   <AuthRequired>
                     <Tasks />

@@ -29,17 +29,17 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { UserData } from '@/types/user';
+import { IUser } from '@/types/user';
 
 interface UserTableProps {
-  users: UserData[];
+  users: IUser[];
   searchTerm: string;
   showActive: boolean;
   currentPage: number;
   setCurrentPage: (page: number) => void;
-  onEdit: (user: UserData) => void;
-  onDelete: (user: UserData) => void;
-  onManagePermissions: (user: UserData) => void;
+  onEdit: (user: IUser) => void;
+  onDelete: (user: IUser) => void;
+  onManagePermissions: (user: IUser) => void;
   isLoading?: boolean;
 }
 

@@ -2,17 +2,17 @@
 import { useState, useEffect } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { roleService } from '@/services/roles';
-import { Role } from '@/types/role';
+import { IRole } from '@/types/role';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 interface RoleSelectorProps {
-  selectedRoles: Role[];
-  onChange: (roles: Role[]) => void;
+  selectedRoles: IRole[];
+  onChange: (roles: IRole[]) => void;
 }
 
 const RoleSelector = ({ selectedRoles, onChange }: RoleSelectorProps) => {
-  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<IRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -37,7 +37,7 @@ const RoleSelector = ({ selectedRoles, onChange }: RoleSelectorProps) => {
     fetchRoles();
   }, [toast]);
 
-  const handleRoleChange = (role: Role, checked: boolean) => {
+  const handleRoleChange = (role: IRole, checked: boolean) => {
     if (checked) {
       onChange([...selectedRoles, role]);
     } else {
@@ -67,13 +67,13 @@ const RoleSelector = ({ selectedRoles, onChange }: RoleSelectorProps) => {
       <div className="space-y-3 mt-3">
         {availableRoles.map((role) => (
           <div key={role.id} className="flex items-center space-x-3 px-4 py-3 border rounded-md">
-            <Checkbox 
+            <Checkbox
               id={`role-${role.id}`}
               checked={isRoleSelected(role.id)}
               onCheckedChange={(checked) => handleRoleChange(role, checked as boolean)}
             />
-            <label 
-              htmlFor={`role-${role.id}`} 
+            <label
+              htmlFor={`role-${role.id}`}
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
             >
               {role.name}

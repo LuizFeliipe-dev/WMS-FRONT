@@ -1,6 +1,6 @@
 
 import { UserPermission, PermissionData } from './auth';
-import { Role } from './role';
+import { IRole } from './role';
 
 export interface UserFormValues {
   name: string;
@@ -8,7 +8,7 @@ export interface UserFormValues {
   role: string;
 }
 
-export interface UserData {
+export interface IUser {
   id: string;
   name: string;
   email: string;
@@ -19,5 +19,5 @@ export interface UserData {
   active: boolean;
   createdAt: string;
   updatedAt: string;
-  roles: Role[];
+  roles: IRole[];
 }

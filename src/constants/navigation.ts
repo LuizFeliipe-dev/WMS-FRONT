@@ -61,7 +61,7 @@ export const navigationSections: NavigationSection[] = [
       },
       {
         name: 'Produtos',
-        href: '/items',
+        href: '/product',
         icon: ShoppingBag,
         route: 'product'
       },

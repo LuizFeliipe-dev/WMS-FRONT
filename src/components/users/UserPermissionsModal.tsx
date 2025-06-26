@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Shield } from "lucide-react";
-import { Role } from "@/types/role";
+import { IRole } from "@/types/role";
 import { Checkbox } from "@/components/ui/checkbox";
 import { roleService } from '@/services/roles';
 import { userService } from '@/services/users';
@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 interface UserRole {
-  role: Role;
+  role: IRole;
   read: boolean;
   writer: boolean;
 }
@@ -20,8 +20,8 @@ interface UserPermissionsModalProps {
   onOpenChange: (open: boolean) => void;
   userName: string;
   userId: string;
-  initialRoles?: Role[];
-  onSave: (roles: Role[]) => void;
+  initialRoles?: IRole[];
+  onSave: (roles: IRole[]) => void;
 }
 
 const UserPermissionsModal = ({
@@ -32,7 +32,7 @@ const UserPermissionsModal = ({
   initialRoles = [],
   onSave
 }: UserPermissionsModalProps) => {
-  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<IRole[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [initialUserRoles, setInitialUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);

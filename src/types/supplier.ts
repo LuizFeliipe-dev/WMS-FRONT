@@ -10,3 +10,14 @@ export interface ISupplier {
   phone?: string,
   address?: string
 }
+
+export interface ISupplierContact {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  active: boolean;
+  supplierId: string;
+  createdAt: string;
+  updatedAt: string;
+}

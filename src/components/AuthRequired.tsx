@@ -1,61 +1,62 @@
-
+import { useAuth } from '@/contexts/useAuth';
 import { ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../lib/auth';
-import { UserPermission } from '../types/auth';
 
 interface AuthRequiredProps {
   children: ReactNode;
-  requiredPermission?: UserPermission;
   requiredRoute?: string;
+  requireWriteAccess?: boolean;
 }
 
-const AuthRequired = ({ 
-  children, 
-  requiredPermission = 'initial',
-  requiredRoute
+const AuthRequired = ({
+  children,
+  requiredRoute,
+  requireWriteAccess = false,
 }: AuthRequiredProps) => {
-  const { isAuthenticated, isLoading, hasPermission, hasRouteAccess } = useAuth();
+  const {
+    isAuthenticated,
+    isLoading,
+    hasRouteAccess,
+    hasWriteAccess,
+  } = useAuth();
+
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (isLoading) return;
+
+    if (!isAuthenticated) {
       navigate('/login', { replace: true, state: { from: location } });
-    } else if (!isLoading && isAuthenticated) {
-      // Check route-based permission if specified
-      if (requiredRoute && !hasRouteAccess(requiredRoute)) {
-        navigate('/unauthorized', { replace: true });
-      } 
-      // Fall back to legacy permission system
-      else if (!requiredRoute && !hasPermission(requiredPermission)) {
+    } else if (requiredRoute) {
+      const hasAccess = requireWriteAccess
+        ? hasWriteAccess(requiredRoute)
+        : hasRouteAccess(requiredRoute);
+
+      if (!hasAccess) {
         navigate('/unauthorized', { replace: true });
       }
     }
-  }, [isAuthenticated, isLoading, hasPermission, hasRouteAccess, requiredPermission, requiredRoute, navigate, location]);
+  }, [isLoading, isAuthenticated, requiredRoute, requireWriteAccess, navigate, location, hasRouteAccess, hasWriteAccess]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse flex flex-col items-center">
-          <div className="w-20 h-20 rounded-full bg-blue-100 mb-4"></div>
-          <div className="h-4 w-32 bg-gray-200 rounded mb-2"></div>
-          <div className="h-3 w-24 bg-gray-200 rounded"></div>
+          <div className="w-20 h-20 rounded-full bg-blue-100 mb-4" />
+          <div className="h-4 w-32 bg-gray-200 rounded mb-2" />
+          <div className="h-3 w-24 bg-gray-200 rounded" />
         </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return null; // Will redirect to login
-  }
-
-  if (requiredRoute && !hasRouteAccess(requiredRoute)) {
-    return null; // Will redirect to unauthorized
-  }
-
-  if (!requiredRoute && !hasPermission(requiredPermission)) {
-    return null; // Will redirect to unauthorized
+  if (!isAuthenticated) return null;
+  if (requiredRoute) {
+    const hasAccess = requireWriteAccess
+      ? hasWriteAccess(requiredRoute)
+      : hasRouteAccess(requiredRoute);
+    if (!hasAccess) return null;
   }
 
   return <>{children}</>;

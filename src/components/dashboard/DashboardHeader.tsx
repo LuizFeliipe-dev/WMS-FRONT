@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/auth';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/contexts/useAuth';
 
 const DashboardHeader = () => {
   const { user } = useAuth();
@@ -10,7 +10,7 @@ const DashboardHeader = () => {
   useEffect(() => {
     const date = new Date();
     const hours = date.getHours();
-    
+
     if (hours < 12) {
       setGreeting('Bom dia');
     } else if (hours < 18) {

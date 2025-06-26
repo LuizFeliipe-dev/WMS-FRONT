@@ -1,9 +1,6 @@
 
-import React from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import ActivityItem from './ActivityItem';
-import { Clipboard, ArrowRightToLine, Box, Package } from 'lucide-react';
-import { IDashboard, useDashboard } from '@/hooks/useDashboard';
+import { IDashboard } from '@/hooks/useDashboard';
 import { Skeleton } from '@/components/ui/skeleton';
 import TaskItem from './TaskItem';
 import { useNavigate } from 'react-router-dom';

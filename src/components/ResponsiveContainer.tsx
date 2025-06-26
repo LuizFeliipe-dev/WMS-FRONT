@@ -10,9 +10,6 @@ interface ResponsiveContainerProps {
   withSidebar?: boolean;
 }
 
-/**
- * A responsive container that handles padding differently on mobile vs desktop
- */
 const ResponsiveContainer = ({
   children,
   className,
@@ -20,8 +17,8 @@ const ResponsiveContainer = ({
 }: ResponsiveContainerProps) => {
   const isMobile = useIsMobile();
 
-  const mobileClasses = isMobile 
-    ? "content-mobile content-spacing-mobile" 
+  const mobileClasses = isMobile
+    ? "content-mobile content-spacing-mobile"
     : "p-4 md:p-6 lg:p-8";
 
   if (withSidebar) {

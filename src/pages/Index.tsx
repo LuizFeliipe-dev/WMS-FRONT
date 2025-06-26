@@ -1,7 +1,7 @@
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../lib/auth';
+import { useAuth } from '@/contexts/useAuth';
 
 const Index = () => {
   const navigate = useNavigate();
